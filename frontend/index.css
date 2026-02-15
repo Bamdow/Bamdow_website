@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hardware acceleration helpers */
+.transform-gpu {
+  transform: translate3d(0, 0, 0);
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.vt-page { view-transition-name: page; }
+
+@keyframes vtFadeIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.995); filter: blur(4px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+
+@keyframes vtFadeOut {
+  from { opacity: 1; transform: none; filter: blur(0); }
+  to   { opacity: 0; transform: translateY(-6px) scale(0.995); filter: blur(4px); }
+}
+
+::view-transition-old(page) { animation: vtFadeOut 0.25s ease-in both; }
+::view-transition-new(page) { animation: vtFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(page),
+  ::view-transition-new(page) { animation: none !important; }
+}
