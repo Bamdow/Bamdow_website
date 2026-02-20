@@ -24,10 +24,10 @@ export const CONTACT_DATA: Record<Language, ContactContent> = {
     emailMeLabel: "邮箱",
     email: "1293038321@qq.com",
     hello: "終於等到你<3",
-    intro: "点击输入文本",
+    intro: '"点击输入文本"',
     socials: {
       wechat: "",
-      bilibili: "焦糖玛奇诺",
+      bilibili: "焦糖马奇诺",
       music163: "IVUTRITIR"
     },
     githubLabel: "GitHub",

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bamdow.mapper.DevelopmentProjectMapper">
+    <insert id="insert" parameterType="com.bamdow.pojo.entity.DevelopmentProject">
+        INSERT INTO development_projects (
+            id,
+            github_url
+        ) VALUES (
+            #{id},
+            #{githubUrl}
+        )
+    </insert>
+</mapper>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bamdow.mapper.ProjectMapper">
+    <insert id="insert" parameterType="com.bamdow.pojo.entity.Project">
+        INSERT INTO projects (
+            id,
+            title,
+            description,
+            image,
+            category,
+            tags
+        ) VALUES (
+            #{id},
+            #{title},
+            #{description},
+            #{image},
+            #{category},
+            #{tags}
+        )
+    </insert>
+    <select id="pageQuery" resultType="com.bamdow.pojo.vo.ProjectListVO">
+        SELECT
+            id,
+            title,
+            description,
+            image,
+            category,
+            tags
+        FROM
+            projects
+        ORDER BY
+            created_at
+    </select>
+</mapper>

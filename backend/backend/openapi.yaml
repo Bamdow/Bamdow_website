@@ -1,0 +1,347 @@
+openapi: 3.0.0
+info:
+  title: 项目管理后端API
+  description: 用于管理摄影、开发和其他类型项目的后端接口
+  version: 1.0.0
+servers:
+  - url: /api
+    description: 前端代理地址
+paths:
+  /admin/projects:
+    get:
+      summary: 获取项目列表
+      description: 根据分类和分页参数获取项目列表
+      parameters:
+        - name: category
+          in: query
+          description: 项目分类，可选值：All, Photography, Development, Other
+          required: false
+          schema:
+            type: string
+            default: All
+        - name: page
+          in: query
+          description: 页码，默认1
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          description: 每页大小，默认16
+          required: false
+          schema:
+            type: integer
+            default: 16
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 10
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ProjectListVO'
+    post:
+      summary: 创建项目
+      description: 创建新的项目
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreateDTO'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/ProjectDetailVO'
+  /admin/projects/{id}:
+    get:
+      summary: 获取项目详情
+      description: 根据项目ID获取项目详情
+      parameters:
+        - name: id
+          in: path
+          description: 项目ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/ProjectDetailVO'
+    put:
+      summary: 更新项目
+      description: 根据项目ID更新项目信息
+      parameters:
+        - name: id
+          in: path
+          description: 项目ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateDTO'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/ProjectDetailVO'
+    delete:
+      summary: 删除项目
+      description: 根据项目ID删除项目
+      parameters:
+        - name: id
+          in: path
+          description: 项目ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    type: null
+  /admin/upload/image:
+    post:
+      summary: 上传图片
+      description: 上传图片文件并返回URL
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 图片文件
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                        example: https://example.com/upload/image.jpg
+components:
+  schemas:
+    ProjectCreateDTO:
+      type: object
+      properties:
+        title:
+          type: string
+          description: 项目标题
+        description:
+          type: string
+          description: 项目描述
+        image:
+          type: string
+          description: 项目图片URL，多个URL用逗号分隔（兼容旧版本）
+        images:
+          type: array
+          items:
+            type: string
+          description: 项目图片URL列表（支持多张图片）
+        category:
+          type: string
+          description: 项目分类
+        tags:
+          type: string
+          description: 项目标签，用逗号分隔
+        thoughts:
+          type: string
+          description: 摄影项目的思路&感受
+        additionalInfo:
+          type: string
+          description: 摄影项目的补充信息
+        githubUrl:
+          type: string
+          description: 开发项目的GitHub链接
+        externalLink:
+          type: string
+          description: 其他项目的外部链接
+    ProjectUpdateDTO:
+      type: object
+      properties:
+        title:
+          type: string
+          description: 项目标题
+        description:
+          type: string
+          description: 项目描述
+        image:
+          type: string
+          description: 项目图片URL，多个URL用逗号分隔
+        tags:
+          type: string
+          description: 项目标签，用逗号分隔
+        thoughts:
+          type: string
+          description: 摄影项目的思路&感受
+        additionalInfo:
+          type: string
+          description: 摄影项目的补充信息
+        githubUrl:
+          type: string
+          description: 开发项目的GitHub链接
+        externalLink:
+          type: string
+          description: 其他项目的外部链接
+    ProjectListVO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 项目ID
+        title:
+          type: string
+          description: 项目标题
+        description:
+          type: string
+          description: 项目描述
+        image:
+          type: string
+          description: 项目图片URL，多个URL用逗号分隔
+        category:
+          type: string
+          description: 项目分类
+        tags:
+          type: array
+          items:
+            type: string
+          description: 项目标签列表
+        bilingualTitle:
+          $ref: '#/components/schemas/BilingualTitle'
+    ProjectDetailVO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 项目ID
+        title:
+          type: string
+          description: 项目标题
+        description:
+          type: string
+          description: 项目描述
+        image:
+          type: string
+          description: 项目图片URL，多个URL用逗号分隔
+        category:
+          type: string
+          description: 项目分类
+        tags:
+          type: array
+          items:
+            type: string
+          description: 项目标签列表
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新时间
+        thoughts:
+          type: string
+          description: 摄影项目的思路&感受
+        additionalInfo:
+          type: string
+          description: 摄影项目的补充信息
+        githubUrl:
+          type: string
+          description: 开发项目的GitHub链接
+        externalLink:
+          type: string
+          description: 其他项目的外部链接
+        bilingualTitle:
+          $ref: '#/components/schemas/BilingualTitle'
+    BilingualTitle:
+      type: object
+      properties:
+        zh:
+          type: string
+          description: 中文标题
+        en:
+          type: string
+          description: 英文标题

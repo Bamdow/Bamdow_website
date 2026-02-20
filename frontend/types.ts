@@ -10,11 +10,7 @@ export enum Category {
 }
 
 export enum ArticleCategory {
-  DIT = 'DiT', // 数媒与课程
-  LUNA = 'LUNA', // 影像相关
-  TALK = '瞎叨be叨', // 杂记
-  AFTER8 = 'After8', // 聊艺术
-  SERENITY = '山海疗养院' // 游记
+
 }
 
 export interface Article {
@@ -30,31 +26,29 @@ export interface Article {
 export interface Project {
   id: string;
   title: string;
-  subtitle: string;
-  category: Category;
   description: string;
-  role: string;
-  image: string; // URL placeholder (Cover/Thumbnail)
-  videoUrl?: string; // URL to .mp4 file
-  bilibiliId?: string; // Bilibili Video ID (e.g. BV1xx...)
-  figmaUrl?: string; // Figma File URL
-  gallery?: string[]; // Additional images (URLs)
-  externalLink?: string; // External link (e.g. Bilibili, Behance)
+  image: string;
+  category: Category;
   tags: string[];
-  // New detailed fields
-  concept?: string;
-  roleDetail?: string;
-  awards?: string[]; // Array of award strings
   
-  // Special field for placeholder UI
+  // 摄影项目特有字段
+  thoughts?: string;
+  additionalInfo?: string;
+  
+  // 开发项目特有字段
+  githubUrl?: string;
+  
+  // 其他项目特有字段
+  externalLink?: string;
+  
+  // 保留字段，确保与现有代码兼容
+  subtitle?: string;
+  role?: string;
+  gallery?: string[];
   bilingualTitle?: {
     zh: string;
     en: string;
   };
-
-  websiteUrl?: string; // Online preview URL
-  githubUrl?: string; // GitHub repository URL
-  icon?: string; // Icon name for Dev projects
 }
 
 export interface Experience {

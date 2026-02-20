@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PROJECTS, CATEGORY_LABELS } from '../constants';
+import { CATEGORY_LABELS } from '../constants';
 import { Category, Language, Project } from '../types';
 import { PHOTOGRAPHY_GALLERY } from '../src/data/photography';
+import { ApiService } from '../src/services/api';
 import { ArrowUpRight, X, Terminal, MessageCircle, IdCard, Github, ExternalLink, ChevronLeft, ChevronRight, FileText, Film, Plus, Edit, Trash2 } from 'lucide-react';
 
 interface PortfolioSectionProps {
@@ -58,6 +59,31 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 16;
+
+  // API State
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Add Project Form State
+  const [addFormData, setAddFormData] = useState({
+    title: '',
+    description: '',
+    images: [] as string[],
+    tags: '',
+    thoughts: '',
+    additionalInfo: '',
+    githubUrl: '',
+    externalLink: ''
+  });
+  
+  // Form Loading State
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
   // Sync with external filter if provided
   useEffect(() => {
     if (externalFilter) {
@@ -65,8 +91,31 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
     }
   }, [externalFilter]);
 
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
+
+  // Fetch projects from API
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await ApiService.getProjects(language, filter);
+        setProjects(data);
+      } catch (err) {
+        setError('Failed to fetch projects');
+        console.error('Error fetching projects:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, [language, filter]);
+
   // Get Categories in preferred order
-  const currentProjects = PROJECTS[language];
   const preferredOrder = [
     Category.PHOTO,
     Category.DEV,
@@ -74,14 +123,19 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
   ];
   
   const availableCategories = preferredOrder.filter(cat => 
-    currentProjects.some(p => p.category === cat) || cat === Category.DEV || cat === Category.OTHER
+    projects.some(p => p.category === cat) || cat === Category.PHOTO || cat === Category.DEV || cat === Category.OTHER
   );
   
   const categories = ['All', ...availableCategories];
 
-  const filteredProjects = filter === 'All' 
-    ? currentProjects 
-    : currentProjects.filter(p => p.category === filter);
+  const filteredProjects = projects;
+
+  // Pagination logic
+  const totalProjects = filteredProjects.length;
+  const totalPages = Math.ceil(totalProjects / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentProjectsPage = filteredProjects.slice(indexOfFirstItem, indexOfLastItem);
 
   // Handle Modal Render State for Animation
   useEffect(() => {
@@ -150,6 +204,131 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
     if (isLeftSwipe) handleNext();
     if (isRightSwipe) handlePrev();
   };
+  
+  // Handle Form Input Changes
+  const handleAddFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setAddFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  // Handle Image Upload (single file)
+  const handleImageUpload = async (file: File) => {
+    try {
+      setFormLoading(true);
+      const imageUrl = await ApiService.uploadImage(file);
+      setAddFormData(prev => ({
+        ...prev,
+        images: [...prev.images, imageUrl]
+      }));
+      setFormError(null);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setFormError(language === 'zh' ? '图片上传失败，请重试' : 'Image upload failed, please try again');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+  
+  // Handle Multiple Image Upload
+  const handleMultipleImageUpload = async (files: File[]) => {
+    try {
+      setFormLoading(true);
+      const imageUrls = await ApiService.uploadImages(files);
+      setAddFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...imageUrls]
+      }));
+      setFormError(null);
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      setFormError(language === 'zh' ? '图片上传失败，请重试' : 'Image upload failed, please try again');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+  
+  // Remove Image
+  const removeImage = (index: number) => {
+    setAddFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+  
+  // Handle Form Submit
+  const handleAddFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setFormLoading(true);
+      setFormError(null);
+      
+      // Validate form
+      if (!addFormData.title || !addFormData.description || addFormData.images.length === 0) {
+        setFormError(language === 'zh' ? '请填写必填字段并上传至少一张图片' : 'Please fill in all required fields and upload at least one image');
+        return;
+      }
+      
+      // Prepare request data
+      const requestData = {
+        title: addFormData.title,
+        description: addFormData.description,
+        images: addFormData.images,
+        category: selectedCategory,
+        tags: addFormData.tags,
+        thoughts: addFormData.thoughts,
+        additionalInfo: addFormData.additionalInfo,
+        githubUrl: addFormData.githubUrl,
+        externalLink: addFormData.externalLink
+      };
+      
+      // Call API to create project
+      const newProject = await ApiService.createProject(requestData);
+      
+      // Add new project to list
+      setProjects(prev => [newProject, ...prev]);
+      
+      // Reset form and close modal
+      setAddFormData({
+        title: '',
+        description: '',
+        images: [],
+        tags: '',
+        thoughts: '',
+        additionalInfo: '',
+        githubUrl: '',
+        externalLink: ''
+      });
+      setSelectedCategory(Category.PHOTO);
+      setShowAddModal(false);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      setFormError(language === 'zh' ? '创建项目失败，请重试' : 'Failed to create project, please try again');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+  
+  // Reset Form when opening modal
+  useEffect(() => {
+    if (showAddModal) {
+      setAddFormData({
+        title: '',
+        description: '',
+        images: [],
+        tags: '',
+        thoughts: '',
+        additionalInfo: '',
+        githubUrl: '',
+        externalLink: ''
+      });
+      setSelectedCategory(Category.PHOTO);
+      setFormError(null);
+    }
+  }, [showAddModal]);
 
   return (
     <div className="w-full max-w-[98vw] mx-auto pb-20">
@@ -257,12 +436,17 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
       </div>
 
       {/* Grid */}
-      <div className={`grid grid-cols-1 ${
-        filter === 'All'
-          ? 'md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12'
-          : 'md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16'
-      }`}>
-        {filteredProjects.map((project) => (
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-black dark:border-t-white rounded-full animate-spin"></div>
+        </div>
+      ) : error ? (
+        <div className="flex justify-center items-center h-64">
+          <p className="text-red-500 dark:text-red-400 font-bold">{error}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+          {currentProjectsPage.map((project) => (
           <div 
             key={project.id} 
             className={`group relative cursor-pointer flex flex-col h-full transform-gpu ${project.category === Category.DEV ? 'bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 hover:shadow-xl hover:-translate-y-2 transition-all duration-300' : ''}`}
@@ -356,7 +540,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                   <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 mb-6 overflow-hidden rounded-2xl relative shadow-none border border-transparent transition-all duration-500 group-hover:shadow-2xl dark:group-hover:shadow-none dark:group-hover:border-white/20 transform-gpu">
                     {project.image && !project.image.includes('picsum') ? (
                         <img 
-                          src={project.image} 
+                          src={project.image.includes(',') ? project.image.split(',')[0].trim() : project.image.trim()} 
                           alt={project.title} 
                           loading="lazy"
                           decoding="async"
@@ -405,7 +589,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                             <div>
                                 <h4 className={`${filter === 'All' ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'} font-black text-gray-400 dark:text-gray-600 mb-2 leading-tight`}>
                                     {project.title}<br/>
-                                    <span className="text-lg md:text-xl font-normal opacity-70">{project.subtitle}</span>
+                                    {project.subtitle && <span className="text-lg md:text-xl font-normal opacity-70">{project.subtitle}</span>}
                                 </h4>
                                 <p className="text-xs font-mono text-gray-400 mt-4 uppercase tracking-widest border border-gray-300 dark:border-gray-700 rounded-full px-3 py-1 inline-block">
                                     {language === 'zh' ? '预览部署中...' : 'Preview Deploying...'}
@@ -432,11 +616,25 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                   </div>
 
                   {/* Tags */}
-                  {project.category !== Category.PHOTO && (
+                  {project.category !== Category.PHOTO && project.tags && project.tags.length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-2 md:gap-3">
-                       {project.tags.map(tag => (
-                         <span key={tag} className="text-[10px] md:text-xs font-bold font-mono text-gray-400 dark:text-gray-500 uppercase tracking-wider border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md">#{tag}</span>
+                       {project.tags.map((tag, index) => (
+                         <span key={index} className="text-[10px] md:text-xs font-bold font-mono text-gray-400 dark:text-gray-500 uppercase tracking-wider border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md">#{tag}</span>
                        ))}
+                    </div>
+                  )}
+                  
+                  {/* External Link for Other category */}
+                  {project.category === Category.OTHER && project.externalLink && (
+                    <div className="mt-4">
+                      <a 
+                        href={project.externalLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[10px] md:text-xs font-bold font-mono text-blue-500 dark:text-blue-400 uppercase tracking-wider border border-blue-200 dark:border-blue-800 px-2 py-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                      >
+                        ↗ {language === 'zh' ? '访问链接' : 'Visit Link'}
+                      </a>
                     </div>
                   )}
                </>
@@ -444,7 +642,52 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
 
           </div>
         ))}
-      </div>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      <div className="flex justify-center items-center gap-4 mt-12 md:mt-16 pb-8">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className={`
+              px-6 py-3 rounded-full font-bold transition-all duration-200
+              ${currentPage === 1
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                : 'bg-black dark:bg-white text-white dark:text-black hover:scale-105'}
+            `}
+          >
+            {language === 'zh' ? '上一页' : 'Previous'}
+          </button>
+          <div className="flex gap-2">
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`
+                  w-10 h-10 flex items-center justify-center rounded-full font-bold transition-all duration-200
+                  ${currentPage === page
+                    ? 'bg-black dark:bg-white text-white dark:text-black'
+                    : 'bg-gray-100 dark:bg-gray-800 text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'}
+                `}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className={`
+              px-6 py-3 rounded-full font-bold transition-all duration-200
+              ${currentPage === totalPages
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                : 'bg-black dark:bg-white text-white dark:text-black hover:scale-105'}
+            `}
+          >
+            {language === 'zh' ? '下一页' : 'Next'}
+          </button>
+        </div>
 
       {/* PROJECT DETAIL MODAL */}
       {isModalRendered && createPortal(
@@ -580,7 +823,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                                                     {language === 'zh' ? '思路&感受' : 'Thoughts & Feelings'}
                                                 </h3>
                                                 <p className="text-xl leading-relaxed text-gray-600 dark:text-gray-300">
-                                                    {displayProject.concept || '通过镜头捕捉生活中的美好瞬间，记录下那些转瞬即逝的情感与故事。每一张照片都承载着独特的视角和深刻的感悟，是对生活的致敬与表达。'}
+                                                    {displayProject.thoughts || '通过镜头捕捉生活中的美好瞬间，记录下那些转瞬即逝的情感与故事。每一张照片都承载着独特的视角和深刻的感悟，是对生活的致敬与表达。'}
                                                 </p>
                                             </div>
 
@@ -714,13 +957,13 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20">
                          
                          {/* Left Col: Concept - Thinner Line */}
-                         {displayProject.concept && (
+                         {(displayProject.thoughts || displayProject.additionalInfo) && (
                              <div className="space-y-8">
                                 <h3 className="text-2xl font-black uppercase tracking-wide text-black dark:text-white border-l-4 border-black dark:border-white pl-6">
                                   {language === 'zh' ? '设计意图 / 创意陈述' : 'Concept / Statement'}
                                 </h3>
                                 <p className="text-xl leading-relaxed text-gray-600 dark:text-gray-300">
-                                   {displayProject.concept}
+                                   {displayProject.thoughts || displayProject.additionalInfo || '项目描述'}
                                 </p>
                              </div>
                          )}
@@ -747,16 +990,16 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                                 </div>
                             )}
 
-                            {/* Role, Tags, Links - Flex Row */}
-                            <div className="flex flex-col md:flex-row gap-8 items-start">
-                                {/* Role */}
+                            {/* ReadMe, Tags, GitHub Links - Flex Row */}
+                            <div className="flex flex-row gap-8 items-start flex-wrap">
+                                {/* ReadMe */}
                                 <div className="space-y-4 flex-1 min-w-[200px]">
                                     <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
-                                        {language === 'zh' ? '分工与职责' : 'Role & Responsibility'}
+                                        {language === 'zh' ? 'ReadMe' : 'ReadMe'}
                                     </h4>
                                     <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
-                                        <span className="font-bold text-black dark:text-white block mb-1 text-lg">{displayProject.role}</span>
-                                        {displayProject.roleDetail}
+                                        <span className="font-bold text-black dark:text-white block mb-1 text-lg">{displayProject.role || '项目说明'}</span>
+                                        {displayProject.roleDetail || displayProject.description}
                                     </p>
                                 </div>
 
@@ -765,35 +1008,34 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                                     <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">Tags</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {displayProject.tags.map(tag => (
-                                            <span key={tag} className="text-xs font-bold font-mono text-gray-500 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-lg">
-                                                {tag}
-                                            </span>
+                                            <span key={tag} className="text-xs font-bold font-mono text-gray-500 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-lg">{tag}</span>
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Links */}
-                                {(displayProject.githubUrl || displayProject.websiteUrl) && (
-                                    <div className="space-y-4 flex-1 min-w-[200px]">
-                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
-                                            {language === 'zh' ? '相关链接' : 'Links'}
-                                        </h4>
-                                        <div className="flex flex-wrap gap-4">
-                                            {displayProject.githubUrl && (
-                                                <a href={displayProject.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                                    <Github size={18} />
-                                                    <span className="font-bold underline decoration-2 underline-offset-4 text-sm">GitHub</span>
-                                                </a>
-                                            )}
-                                            {displayProject.websiteUrl && (
-                                                <a href={displayProject.websiteUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                                    <ExternalLink size={18} />
-                                                    <span className="font-bold underline decoration-2 underline-offset-4 text-sm">Demo</span>
-                                                </a>
-                                            )}
-                                        </div>
+                                <div className="space-y-4 flex-1 min-w-[200px]">
+                                    <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                        {language === 'zh' ? '链接' : 'Links'}
+                                    </h4>
+                                    <div className="flex flex-wrap gap-4">
+                                        {displayProject.githubUrl ? (
+                                            <a href={displayProject.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                                <Github size={18} />
+                                                <span className="font-bold underline decoration-2 underline-offset-4 text-sm">GitHub</span>
+                                            </a>
+                                        ) : null}
+                                        {displayProject.externalLink ? (
+                                            <a href={displayProject.externalLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                                <ExternalLink size={18} />
+                                                <span className="font-bold underline decoration-2 underline-offset-4 text-sm">{language === 'zh' ? '外部链接' : 'External Link'}</span>
+                                            </a>
+                                        ) : null}
+                                        {!displayProject.githubUrl && !displayProject.externalLink && (
+                                            <p className="text-gray-400 dark:text-gray-500 text-sm">{language === 'zh' ? '暂无链接' : 'No links available'}</p>
+                                        )}
                                     </div>
-                                )}
+                                </div>
                             </div>
 
                          </div>
@@ -844,6 +1086,13 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
 
              {/* Modal Body */}
              <div className="p-6 md:p-8">
+               {/* Form Error */}
+               {formError && (
+                 <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800">
+                   {formError}
+                 </div>
+               )}
+               
                {/* Category Selection */}
                <div className="mb-8">
                  <h3 className="text-xl font-bold text-black dark:text-white mb-4">
@@ -851,18 +1100,21 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                  </h3>
                  <div className="flex flex-wrap gap-3">
                    <button
+                     type="button"
                      onClick={() => setSelectedCategory(Category.PHOTO)}
                      className={`px-4 py-2 rounded-lg font-bold transition-colors ${selectedCategory === Category.PHOTO ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-gray-100 text-black dark:bg-gray-800 dark:text-white'}`}
                    >
                      {language === 'zh' ? '静态摄影' : 'Photography'}
                    </button>
                    <button
+                     type="button"
                      onClick={() => setSelectedCategory(Category.DEV)}
                      className={`px-4 py-2 rounded-lg font-bold transition-colors ${selectedCategory === Category.DEV ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-gray-100 text-black dark:bg-gray-800 dark:text-white'}`}
                    >
                      {language === 'zh' ? '软件开发' : 'Development'}
                    </button>
                    <button
+                     type="button"
                      onClick={() => setSelectedCategory(Category.OTHER)}
                      className={`px-4 py-2 rounded-lg font-bold transition-colors ${selectedCategory === Category.OTHER ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-gray-100 text-black dark:bg-gray-800 dark:text-white'}`}
                    >
@@ -872,7 +1124,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                </div>
 
                {/* Form Fields */}
-               <div className="space-y-6">
+               <form onSubmit={handleAddFormSubmit} className="space-y-6">
                  {/* Title */}
                  <div>
                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
@@ -880,8 +1132,12 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                    </label>
                    <input
                      type="text"
+                     name="title"
+                     value={addFormData.title}
+                     onChange={handleAddFormChange}
                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                      placeholder={language === 'zh' ? '输入作品标题' : 'Enter project title'}
+                     required
                    />
                  </div>
 
@@ -891,29 +1147,80 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                      {language === 'zh' ? '描述' : 'Description'}
                    </label>
                    <textarea
+                     name="description"
+                     value={addFormData.description}
+                     onChange={handleAddFormChange}
                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                      rows={3}
                      placeholder={language === 'zh' ? '输入作品描述' : 'Enter project description'}
+                     required
                    ></textarea>
                  </div>
 
-                 {/* Image */}
+                 {/* Images */}
                  <div>
                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                     {language === 'zh' ? '图片' : 'Image'}
+                     {language === 'zh' ? '图片' : 'Images'}
                    </label>
-                   <div className="flex justify-center">
-                     <label className="cursor-pointer">
+                   <div className="grid grid-cols-3 gap-4">
+                     {/* Display uploaded images */}
+                     {addFormData.images.map((imageUrl, index) => (
+                       <div key={index} className="aspect-square relative">
+                         <img
+                           src={imageUrl}
+                           alt={`Uploaded Image ${index + 1}`}
+                           className="w-full h-full object-cover rounded-lg"
+                         />
+                         <button
+                           type="button"
+                           onClick={() => removeImage(index)}
+                           className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                         >
+                           <X size={16} />
+                         </button>
+                       </div>
+                     ))}
+                     
+                     {/* Add new image button */}
+                     <div
+                       className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300 cursor-pointer"
+                       onClick={(e) => {
+                         const input = e.currentTarget.querySelector('input[type="file"]');
+                         if (input) {
+                           input.click();
+                         }
+                       }}
+                     >
                        <input
                          type="file"
                          accept="image/*"
+                         multiple
                          className="hidden"
+                         onChange={(e) => {
+                           const files = Array.from(e.target.files || []);
+                           if (files.length > 0) {
+                             handleMultipleImageUpload(files);
+                           }
+                         }}
                        />
-                       <div className="w-40 h-40 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300">
-                         <Plus size={32} className="text-gray-400 dark:text-gray-500" />
-                       </div>
-                     </label>
+                       <Plus size={32} className="text-gray-400 dark:text-gray-500" />
+                     </div>
                    </div>
+                 </div>
+
+                 {/* Tags - Common for all categories */}
+                 <div>
+                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                     {language === 'zh' ? '标签' : 'Tags'}
+                   </label>
+                   <input
+                     type="text"
+                     name="tags"
+                     value={addFormData.tags}
+                     onChange={handleAddFormChange}
+                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                     placeholder={language === 'zh' ? '输入标签，用逗号分隔' : 'Enter tags, separated by commas'}
+                   />
                  </div>
 
                  {/* Category-specific fields would go here */}
@@ -927,6 +1234,9 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                          {language === 'zh' ? '思路&感受' : 'Thoughts & Feelings'}
                        </label>
                        <textarea
+                         name="thoughts"
+                         value={addFormData.thoughts}
+                         onChange={handleAddFormChange}
                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                          rows={3}
                          placeholder={language === 'zh' ? '输入创作思路和感受' : 'Enter creative thoughts and feelings'}
@@ -937,20 +1247,13 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                          {language === 'zh' ? '补充' : 'Additional Info'}
                        </label>
                        <textarea
+                         name="additionalInfo"
+                         value={addFormData.additionalInfo}
+                         onChange={handleAddFormChange}
                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                          rows={3}
                          placeholder={language === 'zh' ? '输入补充信息，如获奖情况、分工与职责等' : 'Enter additional info, such as awards, roles, etc.'}
                        ></textarea>
-                     </div>
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                         {language === 'zh' ? 'TAGS' : 'Tags'}
-                       </label>
-                       <input
-                         type="text"
-                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-                         placeholder={language === 'zh' ? '输入标签，用逗号分隔' : 'Enter tags, separated by commas'}
-                       />
                      </div>
                    </div>
                  )}
@@ -966,13 +1269,37 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                        </label>
                        <input
                          type="url"
+                         name="githubUrl"
+                         value={addFormData.githubUrl}
+                         onChange={handleAddFormChange}
                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                          placeholder="https://github.com/username/repo"
                        />
                      </div>
                    </div>
                  )}
-               </div>
+                 
+                 {selectedCategory === Category.OTHER && (
+                   <div className="space-y-4">
+                     <h4 className="text-lg font-bold text-black dark:text-white">
+                       {language === 'zh' ? '其他特有信息' : 'Other Specific'}
+                     </h4>
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                         {language === 'zh' ? '网址' : 'URL'}
+                       </label>
+                       <input
+                         type="url"
+                         name="externalLink"
+                         value={addFormData.externalLink}
+                         onChange={handleAddFormChange}
+                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                         placeholder="https://example.com"
+                       />
+                     </div>
+                   </div>
+                 )}
+               </form>
              </div>
 
              {/* Modal Footer */}
@@ -984,9 +1311,15 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                  {language === 'zh' ? '取消' : 'Cancel'}
                </button>
                <button
-                 className="px-6 py-3 rounded-lg font-bold bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+                 onClick={handleAddFormSubmit}
+                 disabled={formLoading}
+                 className={`px-6 py-3 rounded-lg font-bold transition-colors ${
+                   formLoading
+                     ? 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
+                     : 'bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100'
+                 }`}
                >
-                 {language === 'zh' ? '保存' : 'Save'}
+                 {formLoading ? (language === 'zh' ? '保存中...' : 'Saving...') : (language === 'zh' ? '保存' : 'Save')}
                </button>
              </div>
              </div>
