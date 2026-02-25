@@ -15,4 +15,12 @@
             #{additionalInfo}
         )
     </insert>
+    <update id="update" parameterType="com.bamdow.pojo.entity.PhotographyProject">
+        update photography_projects
+        set
+            thoughts=#{thoughts},
+            additional_info=#{additionalInfo}
+        where
+            id=#{id}
+    </update>
 </mapper>

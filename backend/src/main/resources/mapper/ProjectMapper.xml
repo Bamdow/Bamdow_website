@@ -21,7 +21,19 @@
             #{tags}
         )
     </insert>
-    <select id="pageQuery" resultType="com.bamdow.pojo.vo.ProjectListVO">
+    <update id="update" parameterType="com.bamdow.pojo.entity.Project">
+        update projects
+        set
+            title = #{title},
+            description=#{description},
+            image=#{image},
+            tags=#{tags}
+        where
+            id=#{id}
+    </update>
+
+
+    <select id="pageQuery" resultType="com.bamdow.pojo.vo.ProjectQueryVO">
         SELECT
             id,
             title,

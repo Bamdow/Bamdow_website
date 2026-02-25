@@ -6,4 +6,5 @@ import lombok.Data;
 public class OtherProject {
     private String id;
     private String externalLink;
+    private String introduction;
 }

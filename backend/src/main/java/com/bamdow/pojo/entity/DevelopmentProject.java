@@ -6,4 +6,5 @@ import lombok.Data;
 public class DevelopmentProject {
     private String id;
     private String githubUrl;
+    private String readme;
 }

@@ -7,10 +7,20 @@
     <insert id="insert" parameterType="com.bamdow.pojo.entity.DevelopmentProject">
         INSERT INTO development_projects (
             id,
-            github_url
+            github_url,
+            readme
         ) VALUES (
             #{id},
-            #{githubUrl}
+            #{githubUrl},
+            #{readme}
         )
     </insert>
+    <update id="update" parameterType="com.bamdow.pojo.entity.DevelopmentProject">
+        update development_projects
+        set
+            github_url=#{githubUrl},
+            readme=#{readme}
+        where
+            id=#{id}
+    </update>
 </mapper>

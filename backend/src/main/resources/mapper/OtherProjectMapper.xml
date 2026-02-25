@@ -7,10 +7,20 @@
     <insert id="insert" parameterType="com.bamdow.pojo.entity.OtherProject">
         INSERT INTO other_projects (
             id,
-            external_link
+            external_link,
+            introduction
         ) VALUES (
             #{id},
-            #{externalLink}
+            #{externalLink},
+            #{introduction}
         )
     </insert>
+    <update id="update" parameterType="com.bamdow.pojo.entity.OtherProject">
+        update other_projects
+        set
+            external_link=#{externalLink},
+            introduction=#{introduction}
+        where
+            id=#{id}
+    </update>
 </mapper>

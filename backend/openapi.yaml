@@ -225,8 +225,10 @@ components:
           type: string
           description: 项目分类
         tags:
-          type: string
-          description: 项目标签，用逗号分隔
+          type: array
+          items:
+            type: string
+          description: 项目标签数组
         thoughts:
           type: string
           description: 摄影项目的思路&感受
@@ -236,12 +238,21 @@ components:
         githubUrl:
           type: string
           description: 开发项目的GitHub链接
+        readme:
+          type: string
+          description: 开发项目的说明文档
         externalLink:
           type: string
           description: 其他项目的外部链接
+        introduction:
+          type: string
+          description: 其他项目的介绍
     ProjectUpdateDTO:
       type: object
       properties:
+        id:
+          type: string
+          description: 项目ID
         title:
           type: string
           description: 项目标题
@@ -252,8 +263,10 @@ components:
           type: string
           description: 项目图片URL，多个URL用逗号分隔
         tags:
-          type: string
-          description: 项目标签，用逗号分隔
+          type: array
+          items:
+            type: string
+          description: 项目标签数组
         thoughts:
           type: string
           description: 摄影项目的思路&感受
@@ -263,9 +276,15 @@ components:
         githubUrl:
           type: string
           description: 开发项目的GitHub链接
+        readme:
+          type: string
+          description: 开发项目的说明文档
         externalLink:
           type: string
           description: 其他项目的外部链接
+        introduction:
+          type: string
+          description: 其他项目的介绍
     ProjectListVO:
       type: object
       properties:
@@ -331,9 +350,15 @@ components:
         githubUrl:
           type: string
           description: 开发项目的GitHub链接
+        readme:
+          type: string
+          description: 开发项目的说明文档
         externalLink:
           type: string
           description: 其他项目的外部链接
+        introduction:
+          type: string
+          description: 其他项目的介绍
         bilingualTitle:
           $ref: '#/components/schemas/BilingualTitle'
     BilingualTitle:

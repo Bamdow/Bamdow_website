@@ -37,9 +37,11 @@ export interface Project {
   
   // 开发项目特有字段
   githubUrl?: string;
+  readme?: string;
   
   // 其他项目特有字段
   externalLink?: string;
+  introduction?: string;
   
   // 保留字段，确保与现有代码兼容
   subtitle?: string;

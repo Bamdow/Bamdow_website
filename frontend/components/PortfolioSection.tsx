@@ -52,7 +52,6 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
   const [editMode, setEditMode] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
   
   // Lightbox State
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -73,12 +72,33 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
     title: '',
     description: '',
     images: [] as string[],
-    tags: '',
+    tags: [] as string[],
     thoughts: '',
     additionalInfo: '',
     githubUrl: '',
-    externalLink: ''
+    readme: '',
+    externalLink: '',
+    introduction: ''
   });
+  
+  // Edit Project Form State
+  const [editFormData, setEditFormData] = useState({
+    id: '',
+    title: '',
+    description: '',
+    images: [] as string[],
+    tags: [] as string[],
+    thoughts: '',
+    additionalInfo: '',
+    githubUrl: '',
+    readme: '',
+    externalLink: '',
+    introduction: '',
+    category: Category.PHOTO
+  });
+  
+  // Tag input state
+  const [tagInput, setTagInput] = useState('');
   
   // Form Loading State
   const [formLoading, setFormLoading] = useState(false);
@@ -214,6 +234,15 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
     }));
   };
   
+  // Handle Edit Form Input Changes
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
   // Handle Image Upload (single file)
   const handleImageUpload = async (file: File) => {
     try {
@@ -278,11 +307,13 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
         description: addFormData.description,
         images: addFormData.images,
         category: selectedCategory,
-        tags: addFormData.tags,
+        tags: addFormData.tags, // 直接发送标签数组给后端
         thoughts: addFormData.thoughts,
         additionalInfo: addFormData.additionalInfo,
         githubUrl: addFormData.githubUrl,
-        externalLink: addFormData.externalLink
+        readme: addFormData.readme,
+        externalLink: addFormData.externalLink,
+        introduction: addFormData.introduction
       };
       
       // Call API to create project
@@ -296,17 +327,72 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
         title: '',
         description: '',
         images: [],
-        tags: '',
+        tags: [],
         thoughts: '',
         additionalInfo: '',
         githubUrl: '',
-        externalLink: ''
+        readme: '',
+        externalLink: '',
+        introduction: ''
       });
+      setTagInput(''); // 同时重置标签输入框
       setSelectedCategory(Category.PHOTO);
       setShowAddModal(false);
     } catch (error) {
       console.error('Error creating project:', error);
       setFormError(language === 'zh' ? '创建项目失败，请重试' : 'Failed to create project, please try again');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+  
+  // Handle Edit Form Submit
+  const handleEditFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setFormLoading(true);
+      setFormError(null);
+      
+      // Validate form
+      if (!editFormData.title || !editFormData.description) {
+        setFormError(language === 'zh' ? '请填写必填字段' : 'Please fill in all required fields');
+        return;
+      }
+      
+      // Prepare request data
+      const requestData = {
+        ...editFormData
+      };
+      
+      // Call API to update project
+      const updatedProject = await ApiService.updateProject(requestData);
+      
+      // Update project in list
+      setProjects(prev => prev.map(project => 
+        project.id === updatedProject.id ? updatedProject : project
+      ));
+      
+      // Reset form and close modal
+      setEditFormData({
+        id: '',
+        title: '',
+        description: '',
+        images: [],
+        tags: [],
+        thoughts: '',
+        additionalInfo: '',
+        githubUrl: '',
+        readme: '',
+        externalLink: '',
+        introduction: '',
+        category: Category.PHOTO
+      });
+      setTagInput(''); // 同时重置标签输入框
+      setShowEditModal(false);
+    } catch (error) {
+      console.error('Error updating project:', error);
+      setFormError(language === 'zh' ? '更新项目失败，请重试' : 'Failed to update project, please try again');
     } finally {
       setFormLoading(false);
     }
@@ -319,12 +405,15 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
         title: '',
         description: '',
         images: [],
-        tags: '',
+        tags: [],
         thoughts: '',
         additionalInfo: '',
         githubUrl: '',
-        externalLink: ''
+        readme: '',
+        externalLink: '',
+        introduction: ''
       });
+      setTagInput(''); // 同时重置标签输入框
       setSelectedCategory(Category.PHOTO);
       setFormError(null);
     }
@@ -461,7 +550,20 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                   }
                 });
               } else {
-                setSelectedProject(project);
+                // 调用 API 获取项目详情
+                const fetchProjectDetail = async () => {
+                  try {
+                    const projectDetail = await ApiService.getProjectById(project.id, language);
+                    if (projectDetail) {
+                      setSelectedProject(projectDetail);
+                    }
+                  } catch (error) {
+                    console.error('Error fetching project detail:', error);
+                    // 出错时使用本地数据
+                    setSelectedProject(project);
+                  }
+                };
+                fetchProjectDetail();
               }
             }}
           >
@@ -494,8 +596,49 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                     onClick={(e) => {
                       if (editMode) {
                         e.stopPropagation(); // Prevent triggering card click only in edit mode
-                        setEditingProject(project);
-                        setShowEditModal(true);
+                        // 发送API请求获取项目详情
+                        const fetchProjectDetail = async () => {
+                          try {
+                            const projectDetail = await ApiService.getProjectById(project.id, language);
+                            if (projectDetail) {
+                              // 将项目详情填充到编辑表单状态中
+                              setEditFormData({
+                                id: projectDetail.id,
+                                title: projectDetail.title,
+                                description: projectDetail.description,
+                                images: projectDetail.gallery || [],
+                                tags: projectDetail.tags || [],
+                                thoughts: projectDetail.thoughts || '',
+                                additionalInfo: projectDetail.additionalInfo || '',
+                                githubUrl: projectDetail.githubUrl || '',
+                                readme: projectDetail.readme || '',
+                                externalLink: projectDetail.externalLink || '',
+                                introduction: projectDetail.introduction || '',
+                                category: projectDetail.category
+                              });
+                              setShowEditModal(true);
+                            }
+                          } catch (error) {
+                            console.error('Error fetching project detail:', error);
+                            // 出错时使用当前项目数据
+                            setEditFormData({
+                              id: project.id,
+                              title: project.title,
+                              description: project.description,
+                              images: project.gallery || [],
+                              tags: project.tags || [],
+                              thoughts: project.thoughts || '',
+                              additionalInfo: project.additionalInfo || '',
+                              githubUrl: project.githubUrl || '',
+                              readme: project.readme || '',
+                              externalLink: project.externalLink || '',
+                              introduction: project.introduction || '',
+                              category: project.category
+                            });
+                            setShowEditModal(true);
+                          }
+                        };
+                        fetchProjectDetail();
                       }
                       // In non-edit mode, allow event to bubble up to card
                     }}
@@ -511,8 +654,49 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                     onClick={(e) => {
                       if (editMode) {
                         e.stopPropagation(); // Prevent triggering card click only in edit mode
-                        setEditingProject(project);
-                        setShowEditModal(true);
+                        // 发送API请求获取项目详情
+                        const fetchProjectDetail = async () => {
+                          try {
+                            const projectDetail = await ApiService.getProjectById(project.id, language);
+                            if (projectDetail) {
+                              // 将项目详情填充到编辑表单状态中
+                              setEditFormData({
+                                id: projectDetail.id,
+                                title: projectDetail.title,
+                                description: projectDetail.description,
+                                images: projectDetail.gallery || [],
+                                tags: projectDetail.tags || [],
+                                thoughts: projectDetail.thoughts || '',
+                                additionalInfo: projectDetail.additionalInfo || '',
+                                githubUrl: projectDetail.githubUrl || '',
+                                readme: projectDetail.readme || '',
+                                externalLink: projectDetail.externalLink || '',
+                                introduction: projectDetail.introduction || '',
+                                category: projectDetail.category
+                              });
+                              setShowEditModal(true);
+                            }
+                          } catch (error) {
+                            console.error('Error fetching project detail:', error);
+                            // 出错时使用当前项目数据
+                            setEditFormData({
+                              id: project.id,
+                              title: project.title,
+                              description: project.description,
+                              images: project.gallery || [],
+                              tags: project.tags || [],
+                              thoughts: project.thoughts || '',
+                              additionalInfo: project.additionalInfo || '',
+                              githubUrl: project.githubUrl || '',
+                              readme: project.readme || '',
+                              externalLink: project.externalLink || '',
+                              introduction: project.introduction || '',
+                              category: project.category
+                            });
+                            setShowEditModal(true);
+                          }
+                        };
+                        fetchProjectDetail();
                       }
                       // In non-edit mode, allow event to bubble up to card
                     }}
@@ -549,8 +733,49 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                           onClick={(e) => {
                             if (editMode) {
                               e.stopPropagation(); // Prevent triggering card click only in edit mode
-                              setEditingProject(project);
-                              setShowEditModal(true);
+                              // 发送API请求获取项目详情
+                              const fetchProjectDetail = async () => {
+                                try {
+                                  const projectDetail = await ApiService.getProjectById(project.id, language);
+                                  if (projectDetail) {
+                                    // 将项目详情填充到编辑表单状态中
+                                    setEditFormData({
+                                      id: projectDetail.id,
+                                      title: projectDetail.title,
+                                      description: projectDetail.description,
+                                      images: projectDetail.gallery || [],
+                                      tags: projectDetail.tags || [],
+                                      thoughts: projectDetail.thoughts || '',
+                                      additionalInfo: projectDetail.additionalInfo || '',
+                                      githubUrl: projectDetail.githubUrl || '',
+                                      readme: projectDetail.readme || '',
+                                      externalLink: projectDetail.externalLink || '',
+                                      introduction: projectDetail.introduction || '',
+                                      category: projectDetail.category
+                                    });
+                                    setShowEditModal(true);
+                                  }
+                                } catch (error) {
+                                  console.error('Error fetching project detail:', error);
+                                  // 出错时使用当前项目数据
+                                  setEditFormData({
+                                    id: project.id,
+                                    title: project.title,
+                                    description: project.description,
+                                    images: project.gallery || [],
+                                    tags: project.tags || [],
+                                    thoughts: project.thoughts || '',
+                                    additionalInfo: project.additionalInfo || '',
+                                    githubUrl: project.githubUrl || '',
+                                    readme: project.readme || '',
+                                    externalLink: project.externalLink || '',
+                                    introduction: project.introduction || '',
+                                    category: project.category
+                                  });
+                                  setShowEditModal(true);
+                                }
+                              };
+                              fetchProjectDetail();
                             }
                             // In non-edit mode, allow event to bubble up to card
                           }}
@@ -561,8 +786,49 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                           onClick={(e) => {
                             if (editMode) {
                               e.stopPropagation(); // Prevent triggering card click only in edit mode
-                              setEditingProject(project);
-                              setShowEditModal(true);
+                              // 发送API请求获取项目详情
+                              const fetchProjectDetail = async () => {
+                                try {
+                                  const projectDetail = await ApiService.getProjectById(project.id, language);
+                                  if (projectDetail) {
+                                    // 将项目详情填充到编辑表单状态中
+                                    setEditFormData({
+                                      id: projectDetail.id,
+                                      title: projectDetail.title,
+                                      description: projectDetail.description,
+                                      images: projectDetail.gallery || [],
+                                      tags: projectDetail.tags || [],
+                                      thoughts: projectDetail.thoughts || '',
+                                      additionalInfo: projectDetail.additionalInfo || '',
+                                      githubUrl: projectDetail.githubUrl || '',
+                                      readme: projectDetail.readme || '',
+                                      externalLink: projectDetail.externalLink || '',
+                                      introduction: projectDetail.introduction || '',
+                                      category: projectDetail.category
+                                    });
+                                    setShowEditModal(true);
+                                  }
+                                } catch (error) {
+                                  console.error('Error fetching project detail:', error);
+                                  // 出错时使用当前项目数据
+                                  setEditFormData({
+                                    id: project.id,
+                                    title: project.title,
+                                    description: project.description,
+                                    images: project.gallery || [],
+                                    tags: project.tags || [],
+                                    thoughts: project.thoughts || '',
+                                    additionalInfo: project.additionalInfo || '',
+                                    githubUrl: project.githubUrl || '',
+                                    readme: project.readme || '',
+                                    externalLink: project.externalLink || '',
+                                    introduction: project.introduction || '',
+                                    category: project.category
+                                  });
+                                  setShowEditModal(true);
+                                }
+                              };
+                              fetchProjectDetail();
                             }
                             // In non-edit mode, allow event to bubble up to card
                           }}
@@ -580,8 +846,49 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                           onClick={(e) => {
                             if (editMode) {
                               e.stopPropagation(); // Prevent triggering card click only in edit mode
-                              setEditingProject(project);
-                              setShowEditModal(true);
+                              // 发送API请求获取项目详情
+                              const fetchProjectDetail = async () => {
+                                try {
+                                  const projectDetail = await ApiService.getProjectById(project.id, language);
+                                  if (projectDetail) {
+                                    // 将项目详情填充到编辑表单状态中
+                                    setEditFormData({
+                                      id: projectDetail.id,
+                                      title: projectDetail.title,
+                                      description: projectDetail.description,
+                                      images: projectDetail.gallery || [],
+                                      tags: projectDetail.tags || [],
+                                      thoughts: projectDetail.thoughts || '',
+                                      additionalInfo: projectDetail.additionalInfo || '',
+                                      githubUrl: projectDetail.githubUrl || '',
+                                      readme: projectDetail.readme || '',
+                                      externalLink: projectDetail.externalLink || '',
+                                      introduction: projectDetail.introduction || '',
+                                      category: projectDetail.category
+                                    });
+                                    setShowEditModal(true);
+                                  }
+                                } catch (error) {
+                                  console.error('Error fetching project detail:', error);
+                                  // 出错时使用当前项目数据
+                                  setEditFormData({
+                                    id: project.id,
+                                    title: project.title,
+                                    description: project.description,
+                                    images: project.gallery || [],
+                                    tags: project.tags || [],
+                                    thoughts: project.thoughts || '',
+                                    additionalInfo: project.additionalInfo || '',
+                                    githubUrl: project.githubUrl || '',
+                                    readme: project.readme || '',
+                                    externalLink: project.externalLink || '',
+                                    introduction: project.introduction || '',
+                                    category: project.category
+                                  });
+                                  setShowEditModal(true);
+                                }
+                              };
+                              fetchProjectDetail();
                             }
                             // In non-edit mode, allow event to bubble up to card
                           }}
@@ -992,14 +1299,17 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
 
                             {/* ReadMe, Tags, GitHub Links - Flex Row */}
                             <div className="flex flex-row gap-8 items-start flex-wrap">
-                                {/* ReadMe */}
+                                {/* ReadMe or Introduction based on category */}
                                 <div className="space-y-4 flex-1 min-w-[200px]">
                                     <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
-                                        {language === 'zh' ? 'ReadMe' : 'ReadMe'}
+                                        {displayProject.category === Category.OTHER ? 
+                                          (language === 'zh' ? '介绍' : 'Introduction') : 
+                                          (language === 'zh' ? 'ReadMe' : 'ReadMe')}
                                     </h4>
                                     <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
-                                        <span className="font-bold text-black dark:text-white block mb-1 text-lg">{displayProject.role || '项目说明'}</span>
-                                        {displayProject.roleDetail || displayProject.description}
+                                        {displayProject.category === Category.OTHER ? 
+                                          (displayProject.introduction || displayProject.description) : 
+                                          (displayProject.readme || displayProject.role || '项目说明')}
                                     </p>
                                 </div>
 
@@ -1213,14 +1523,60 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                      {language === 'zh' ? '标签' : 'Tags'}
                    </label>
-                   <input
-                     type="text"
-                     name="tags"
-                     value={addFormData.tags}
-                     onChange={handleAddFormChange}
-                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-                     placeholder={language === 'zh' ? '输入标签，用逗号分隔' : 'Enter tags, separated by commas'}
-                   />
+                   <div className="flex flex-wrap gap-2 mb-3">
+                     {addFormData.tags.map((tag, index) => (
+                       <span key={index} className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 text-black dark:text-white rounded-full text-sm font-medium">
+                         {tag}
+                         <button
+                           type="button"
+                           onClick={() => {
+                             setAddFormData(prev => ({
+                               ...prev,
+                               tags: prev.tags.filter((_, i) => i !== index)
+                             }));
+                           }}
+                           className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                         >
+                           <X size={14} />
+                         </button>
+                       </span>
+                     ))}
+                   </div>
+                   <div className="flex gap-2">
+                     <input
+                       type="text"
+                       value={tagInput}
+                       onChange={(e) => setTagInput(e.target.value)}
+                       onKeyPress={(e) => {
+                         if (e.key === 'Enter' && tagInput.trim()) {
+                           e.preventDefault();
+                           setAddFormData(prev => ({
+                             ...prev,
+                             tags: [...prev.tags, tagInput.trim()]
+                           }));
+                           setTagInput('');
+                         }
+                       }}
+                       className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                       placeholder={language === 'zh' ? '输入标签' : 'Enter tag'}
+                     />
+                     <button
+                       type="button"
+                       onClick={() => {
+                         if (tagInput.trim()) {
+                           setAddFormData(prev => ({
+                             ...prev,
+                             tags: [...prev.tags, tagInput.trim()]
+                           }));
+                           setTagInput('');
+                         }
+                       }}
+                       disabled={!tagInput.trim()}
+                       className="px-4 py-3 rounded-lg font-bold bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                     >
+                       {language === 'zh' ? '确定' : 'Add'}
+                     </button>
+                   </div>
                  </div>
 
                  {/* Category-specific fields would go here */}
@@ -1276,6 +1632,19 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                          placeholder="https://github.com/username/repo"
                        />
                      </div>
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                         {language === 'zh' ? '项目说明文档' : 'ReadMe'}
+                       </label>
+                       <textarea
+                         name="readme"
+                         value={addFormData.readme}
+                         onChange={handleAddFormChange}
+                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                         rows={3}
+                         placeholder={language === 'zh' ? '输入项目说明文档' : 'Enter project readme'}
+                       ></textarea>
+                     </div>
                    </div>
                  )}
                  
@@ -1296,6 +1665,19 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                          placeholder="https://example.com"
                        />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                         {language === 'zh' ? '项目介绍' : 'Introduction'}
+                       </label>
+                       <textarea
+                         name="introduction"
+                         value={addFormData.introduction}
+                         onChange={handleAddFormChange}
+                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                         rows={3}
+                         placeholder={language === 'zh' ? '输入项目介绍' : 'Enter project introduction'}
+                       ></textarea>
                      </div>
                    </div>
                  )}
@@ -1329,7 +1711,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
       )}
 
       {/* EDIT PROJECT MODAL */}
-      {showEditModal && editingProject && createPortal(
+      {showEditModal && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
            {/* Backdrop */}
            <div 
@@ -1361,8 +1743,15 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
 
              {/* Modal Body */}
              <div className="p-6 md:p-8">
+               {/* Form Error */}
+               {formError && (
+                 <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800">
+                   {formError}
+                 </div>
+               )}
+               
                {/* Form Fields */}
-               <div className="space-y-6">
+               <form onSubmit={handleEditFormSubmit} className="space-y-6">
                  {/* Title */}
                  <div>
                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
@@ -1370,9 +1759,12 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                    </label>
                    <input
                      type="text"
-                     defaultValue={editingProject.title}
+                     name="title"
+                     value={editFormData.title}
+                     onChange={handleEditFormChange}
                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                      placeholder={language === 'zh' ? '输入作品标题' : 'Enter project title'}
+                     required
                    />
                  </div>
 
@@ -1382,24 +1774,14 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                      {language === 'zh' ? '描述' : 'Description'}
                    </label>
                    <textarea
-                     defaultValue={editingProject.description}
+                     name="description"
+                     value={editFormData.description}
+                     onChange={handleEditFormChange}
                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                      rows={3}
                      placeholder={language === 'zh' ? '输入作品描述' : 'Enter project description'}
+                     required
                    ></textarea>
-                 </div>
-
-                 {/* Subtitle */}
-                 <div>
-                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                     {language === 'zh' ? '副标题' : 'Subtitle'}
-                   </label>
-                   <input
-                     type="text"
-                     defaultValue={editingProject.subtitle}
-                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-                     placeholder={language === 'zh' ? '输入副标题' : 'Enter subtitle'}
-                   />
                  </div>
 
                  {/* Tags */}
@@ -1407,16 +1789,64 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                      {language === 'zh' ? '标签' : 'Tags'}
                    </label>
-                   <input
-                     type="text"
-                     defaultValue={editingProject.tags.join(', ')}
-                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-                     placeholder={language === 'zh' ? '输入标签，用逗号分隔' : 'Enter tags, separated by commas'}
-                   />
+                   <div className="flex flex-wrap gap-2 mb-3">
+                     {editFormData.tags.map((tag, index) => (
+                       <span key={index} className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 text-black dark:text-white rounded-full text-sm font-medium">
+                         {tag}
+                         <button
+                           type="button"
+                           onClick={() => {
+                             setEditFormData(prev => ({
+                               ...prev,
+                               tags: prev.tags.filter((_, i) => i !== index)
+                             }));
+                           }}
+                           className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                         >
+                           <X size={14} />
+                         </button>
+                       </span>
+                     ))}
+                   </div>
+                   <div className="flex gap-2">
+                     <input
+                       type="text"
+                       value={tagInput}
+                       onChange={(e) => setTagInput(e.target.value)}
+                       onKeyPress={(e) => {
+                         if (e.key === 'Enter' && tagInput.trim()) {
+                           e.preventDefault();
+                           setEditFormData(prev => ({
+                             ...prev,
+                             tags: [...prev.tags, tagInput.trim()]
+                           }));
+                           setTagInput('');
+                         }
+                       }}
+                       className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                       placeholder={language === 'zh' ? '输入标签' : 'Enter tag'}
+                     />
+                     <button
+                       type="button"
+                       onClick={() => {
+                         if (tagInput.trim()) {
+                           setEditFormData(prev => ({
+                             ...prev,
+                             tags: [...prev.tags, tagInput.trim()]
+                           }));
+                           setTagInput('');
+                         }
+                       }}
+                       disabled={!tagInput.trim()}
+                       className="px-4 py-3 rounded-lg font-bold bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                     >
+                       {language === 'zh' ? '确定' : 'Add'}
+                     </button>
+                   </div>
                  </div>
 
                  {/* Category-specific fields would go here */}
-                 {editingProject.category === Category.PHOTO && (
+                 {editFormData.category === Category.PHOTO && (
                   <div className="space-y-4">
                     <h4 className="text-lg font-bold text-black dark:text-white">
                       {language === 'zh' ? '摄影特有信息' : 'Photography Specific'}
@@ -1429,18 +1859,30 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                       </label>
                       <div className="grid grid-cols-3 gap-4">
                         {/* Display existing photos */}
-                        {(editingProject.gallery || PHOTOGRAPHY_GALLERY[editingProject.id] || []).map((photo, index) => (
-                          <div key={index} className="aspect-square overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                            <img 
-                              src={photo} 
-                              alt={`Photo ${index + 1}`} 
-                              className="w-full h-full object-cover"
+                        {editFormData.images.map((photo, index) => (
+                          <div key={index} className="aspect-square relative">
+                            <img
+                              src={photo}
+                              alt={`Uploaded Image ${index + 1}`}
+                              className="w-full h-full object-cover rounded-lg"
                             />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  images: prev.images.filter((_, i) => i !== index)
+                                }));
+                              }}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                            >
+                              <X size={16} />
+                            </button>
                           </div>
                         ))}
                         
                         {/* Add new photo button */}
-                        <div 
+                        <div
                           className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300 cursor-pointer"
                           onClick={(e) => {
                             const input = e.currentTarget.querySelector('input[type="file"]');
@@ -1452,7 +1894,30 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                           <input
                             type="file"
                             accept="image/*"
+                            multiple
                             className="hidden"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (files.length > 0) {
+                                const uploadImages = async () => {
+                                  try {
+                                    setFormLoading(true);
+                                    const imageUrls = await ApiService.uploadImages(files);
+                                    setEditFormData(prev => ({
+                                      ...prev,
+                                      images: [...prev.images, ...imageUrls]
+                                    }));
+                                    setFormError(null);
+                                  } catch (error) {
+                                    console.error('Error uploading images:', error);
+                                    setFormError(language === 'zh' ? '图片上传失败，请重试' : 'Image upload failed, please try again');
+                                  } finally {
+                                    setFormLoading(false);
+                                  }
+                                };
+                                uploadImages();
+                              }
+                            }}
                           />
                           <Plus size={32} className="text-gray-400 dark:text-gray-500" />
                         </div>
@@ -1464,7 +1929,9 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                         {language === 'zh' ? '思路&感受' : 'Thoughts & Feelings'}
                       </label>
                       <textarea
-                        defaultValue={editingProject.concept}
+                        name="thoughts"
+                        value={editFormData.thoughts}
+                        onChange={handleEditFormChange}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                         rows={3}
                         placeholder={language === 'zh' ? '输入创作思路和感受' : 'Enter creative thoughts and feelings'}
@@ -1475,7 +1942,9 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                         {language === 'zh' ? '补充' : 'Additional Info'}
                       </label>
                       <textarea
-                        defaultValue={editingProject.additionalInfo}
+                        name="additionalInfo"
+                        value={editFormData.additionalInfo}
+                        onChange={handleEditFormChange}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                         rows={3}
                         placeholder={language === 'zh' ? '输入补充信息，如获奖情况、分工与职责等' : 'Enter additional info, such as awards, roles, etc.'}
@@ -1484,7 +1953,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                   </div>
                 )}
 
-                 {editingProject.category === Category.DEV && (
+                 {editFormData.category === Category.DEV && (
                    <div className="space-y-4">
                      <h4 className="text-lg font-bold text-black dark:text-white">
                        {language === 'zh' ? '开发特有信息' : 'Development Specific'}
@@ -1496,19 +1965,31 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                          {language === 'zh' ? '图片' : 'Image'}
                        </label>
                        <div className="grid grid-cols-3 gap-4">
-                         {/* Display existing image */}
-                         {editingProject.image && (
-                           <div className="aspect-square overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                             <img 
-                               src={editingProject.image} 
-                               alt="Project Image" 
-                               className="w-full h-full object-cover"
+                         {/* Display existing images */}
+                         {editFormData.images.map((imageUrl, index) => (
+                           <div key={index} className="aspect-square relative">
+                             <img
+                               src={imageUrl}
+                               alt={`Uploaded Image ${index + 1}`}
+                               className="w-full h-full object-cover rounded-lg"
                              />
+                             <button
+                               type="button"
+                               onClick={() => {
+                                 setEditFormData(prev => ({
+                                   ...prev,
+                                   images: prev.images.filter((_, i) => i !== index)
+                                 }));
+                               }}
+                               className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                             >
+                               <X size={16} />
+                             </button>
                            </div>
-                         )}
+                         ))}
                          
                          {/* Add new image button */}
-                         <div 
+                         <div
                            className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300 cursor-pointer"
                            onClick={(e) => {
                              const input = e.currentTarget.querySelector('input[type="file"]');
@@ -1520,7 +2001,30 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                            <input
                              type="file"
                              accept="image/*"
+                             multiple
                              className="hidden"
+                             onChange={(e) => {
+                               const files = Array.from(e.target.files || []);
+                               if (files.length > 0) {
+                                 const uploadImages = async () => {
+                                   try {
+                                     setFormLoading(true);
+                                     const imageUrls = await ApiService.uploadImages(files);
+                                     setEditFormData(prev => ({
+                                       ...prev,
+                                       images: [...prev.images, ...imageUrls]
+                                     }));
+                                     setFormError(null);
+                                   } catch (error) {
+                                     console.error('Error uploading images:', error);
+                                     setFormError(language === 'zh' ? '图片上传失败，请重试' : 'Image upload failed, please try again');
+                                   } finally {
+                                     setFormLoading(false);
+                                   }
+                                 };
+                                 uploadImages();
+                               }
+                             }}
                            />
                            <Plus size={32} className="text-gray-400 dark:text-gray-500" />
                          </div>
@@ -1533,40 +2037,88 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                        </label>
                        <input
                          type="url"
-                         defaultValue={editingProject.githubUrl}
+                         name="githubUrl"
+                         value={editFormData.githubUrl}
+                         onChange={handleEditFormChange}
                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                          placeholder="https://github.com/username/repo"
                        />
                      </div>
+
                      <div>
                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                         {language === 'zh' ? '网站链接' : 'Website URL'}
+                         {language === 'zh' ? '项目说明文档' : 'ReadMe'}
+                       </label>
+                       <textarea
+                         name="readme"
+                         value={editFormData.readme}
+                         onChange={handleEditFormChange}
+                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                         rows={3}
+                         placeholder={language === 'zh' ? '输入项目说明文档' : 'Enter project readme'}
+                       ></textarea>
+                     </div>
+                   </div>
+                 )}
+                 
+                 {editFormData.category === Category.OTHER && (
+                   <div className="space-y-4">
+                     <h4 className="text-lg font-bold text-black dark:text-white">
+                       {language === 'zh' ? '其他特有信息' : 'Other Specific'}
+                     </h4>
+
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                         {language === 'zh' ? '网址' : 'URL'}
                        </label>
                        <input
                          type="url"
-                         defaultValue={editingProject.websiteUrl}
+                         name="externalLink"
+                         value={editFormData.externalLink}
+                         onChange={handleEditFormChange}
                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                          placeholder="https://example.com"
                        />
                      </div>
+
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                         {language === 'zh' ? '项目介绍' : 'Introduction'}
+                       </label>
+                       <textarea
+                         name="introduction"
+                         value={editFormData.introduction}
+                         onChange={handleEditFormChange}
+                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                         rows={3}
+                         placeholder={language === 'zh' ? '输入项目介绍' : 'Enter project introduction'}
+                       ></textarea>
+                     </div>
                    </div>
                  )}
-               </div>
-             </div>
 
-             {/* Modal Footer */}
-             <div className="p-6 md:p-8 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-4">
-               <button
-                 onClick={() => setShowEditModal(false)}
-                 className="px-6 py-3 rounded-lg font-bold bg-gray-100 text-black dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-               >
-                 {language === 'zh' ? '取消' : 'Cancel'}
-               </button>
-               <button
-                 className="px-6 py-3 rounded-lg font-bold bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
-               >
-                 {language === 'zh' ? '保存' : 'Save'}
-               </button>
+                 {/* Modal Footer */}
+                 <div className="p-6 md:p-8 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-4">
+                   <button
+                     type="button"
+                     onClick={() => setShowEditModal(false)}
+                     className="px-6 py-3 rounded-lg font-bold bg-gray-100 text-black dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                   >
+                     {language === 'zh' ? '取消' : 'Cancel'}
+                   </button>
+                   <button
+                     type="submit"
+                     disabled={formLoading}
+                     className={`px-6 py-3 rounded-lg font-bold transition-colors ${
+                       formLoading
+                         ? 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
+                         : 'bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100'
+                     }`}
+                   >
+                     {formLoading ? (language === 'zh' ? '保存中...' : 'Saving...') : (language === 'zh' ? '保存' : 'Save')}
+                   </button>
+                 </div>
+               </form>
              </div>
              </div>
            </div>

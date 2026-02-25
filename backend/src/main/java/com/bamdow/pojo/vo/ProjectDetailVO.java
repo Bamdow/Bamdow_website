@@ -20,9 +20,11 @@ public class ProjectDetailVO {
 
     // 开发项目特有字段
     private String githubUrl;
-
+    private String readme;
+    
     // 其他项目特有字段
     private String externalLink;
+    private String introduction;
 
     //  bilingual title for frontend
     private BilingualTitle bilingualTitle;

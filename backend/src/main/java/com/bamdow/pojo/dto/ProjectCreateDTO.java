@@ -11,7 +11,7 @@ public class ProjectCreateDTO {
     private String image; // 兼容单张图片URL
     private List<String> images; // 支持多张图片URL列表
     private String category;
-    private String tags;
+    private List<String> tags;
 
     // 摄影项目特有字段
     private String thoughts;
@@ -19,7 +19,9 @@ public class ProjectCreateDTO {
 
     // 开发项目特有字段
     private String githubUrl;
-
+    private String readme;
+    
     // 其他项目特有字段
     private String externalLink;
+    private String introduction;
 }

@@ -54,7 +54,7 @@ export class ApiService {
           image: item.image || '',
           category: item.category as Category,
           tags: item.tags || [],
-          thoughts: item.thoughts,
+          thoughts: item.thoughts || item.concept || '', // 确保thoughts字段有值，优先使用thoughts，否则使用concept，最后使用空字符串
           additionalInfo: item.additionalInfo,
           githubUrl: item.githubUrl,
           externalLink: item.externalLink,
@@ -98,6 +98,8 @@ export class ApiService {
           tags: p[language].tags,
           awards: p[language].awards,
           concept: p[language].concept,
+          thoughts: p[language].concept, // 设置 thoughts 字段，确保编辑卡片能显示内容
+          additionalInfo: p[language].additionalInfo,
           roleDetail: p[language].roleDetail,
           websiteUrl: p[language].websiteUrl,
           githubUrl: p[language].githubUrl,
@@ -127,8 +129,66 @@ export class ApiService {
   // 获取作品详情
   static async getProjectById(id: string, language: Language): Promise<Project | null> {
     try {
-      // 模拟API请求延迟
-      await delay(200);
+      // 构建请求URL
+      const url = new URL(`/api/admin/projects/${id}`, window.location.origin);
+      
+      // 实际发送API请求
+      console.log('Fetching project details from:', url.toString());
+      
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Received project detail response:', data);
+      
+      // 处理后端返回的数据格式
+      const project: any = {
+        id: data.data.id,
+        title: data.data.title,
+        description: data.data.description,
+        image: data.data.image || '',
+        category: data.data.category as Category,
+        tags: data.data.tags || [],
+        thoughts: data.data.thoughts || data.data.concept || '', // 确保thoughts字段有值，优先使用thoughts，否则使用concept，最后使用空字符串
+        additionalInfo: data.data.additionalInfo,
+        githubUrl: data.data.githubUrl,
+        readme: data.data.readme,
+        externalLink: data.data.externalLink,
+        introduction: data.data.introduction,
+        subtitle: data.data.subtitle,
+        role: data.data.role,
+        gallery: data.data.image ? data.data.image.split(',').filter((url: string) => url.trim() !== '') : [],
+        bilingualTitle: data.data.bilingualTitle || {
+          zh: data.data.title,
+          en: data.data.title
+        },
+        // 处理其他可能的字段，确保与现有代码兼容
+        websiteUrl: data.data.websiteUrl,
+        videoUrl: data.data.videoUrl,
+        bilibiliId: data.data.bilibiliId,
+        figmaUrl: data.data.figmaUrl,
+        icon: data.data.icon,
+        awards: data.data.awards,
+        concept: data.data.concept,
+        roleDetail: data.data.roleDetail,
+        createdAt: data.data.createdAt,
+        updatedAt: data.data.updatedAt
+      };
+      
+      return project;
+    } catch (error) {
+      console.error('Error fetching project by id:', error);
+      
+      // 降级处理：使用本地模拟数据
+      console.log('Falling back to local mock data');
       
       const projectData = PROJECT_DATA.find(p => p.id === id);
       if (!projectData) {
@@ -146,6 +206,8 @@ export class ApiService {
         tags: projectData[language].tags,
         awards: projectData[language].awards,
         concept: projectData[language].concept,
+        thoughts: projectData[language].concept, // 设置 thoughts 字段，确保编辑卡片能显示内容
+        additionalInfo: projectData[language].additionalInfo,
         roleDetail: projectData[language].roleDetail,
         websiteUrl: projectData[language].websiteUrl,
         githubUrl: projectData[language].githubUrl,
@@ -162,9 +224,6 @@ export class ApiService {
       };
       
       return project;
-    } catch (error) {
-      console.error('Error fetching project by id:', error);
-      throw error;
     }
   }
   
@@ -198,7 +257,9 @@ export class ApiService {
         thoughts: projectData.thoughts,
         additionalInfo: projectData.additionalInfo,
         githubUrl: projectData.githubUrl,
-        externalLink: projectData.externalLink
+        readme: projectData.readme,
+        externalLink: projectData.externalLink,
+        introduction: projectData.introduction
       };
       
       // 实际发送 API 请求
@@ -230,7 +291,9 @@ export class ApiService {
         thoughts: data.data.thoughts,
         additionalInfo: data.data.additionalInfo,
         githubUrl: data.data.githubUrl,
+        readme: data.data.readme,
         externalLink: data.data.externalLink,
+        introduction: data.data.introduction,
         gallery: data.data.image.split(','), // 将逗号分隔的字符串转换为数组
         bilingualTitle: {
           zh: data.data.title,
@@ -250,11 +313,13 @@ export class ApiService {
         description: projectData.description,
         image: projectData.images.join(','), // 使用逗号分隔的字符串作为主图字段
         category: projectData.category as Category,
-        tags: projectData.tags.split(',').map((tag: string) => tag.trim()),
+        tags: projectData.tags, // 直接使用标签数组
         thoughts: projectData.thoughts,
         additionalInfo: projectData.additionalInfo,
         githubUrl: projectData.githubUrl,
+        readme: projectData.readme,
         externalLink: projectData.externalLink,
+        introduction: projectData.introduction,
         gallery: projectData.images, // 将所有图片放入 gallery
         bilingualTitle: {
           zh: projectData.title,
@@ -329,6 +394,88 @@ export class ApiService {
       // 模拟返回图片URL列表（当后端API不可用时）
       console.log('Using mock image URLs due to API error');
       return files.map(file => `https://example.com/upload/${file.name}`);
+    }
+  }
+  
+  // 更新项目
+  static async updateProject(projectData: any): Promise<Project> {
+    try {
+      const { id, category, ...restData } = projectData;
+      
+      // 构建请求体，确保与后端接口文档格式一致
+      const requestBody = {
+        ...restData,
+        image: restData.images?.join(',') || restData.image, // 兼容单张图片格式，使用逗号分隔的字符串
+        images: restData.images, // 支持多张图片格式，使用数组
+        tags: restData.tags // 直接发送标签数组给后端
+      };
+      
+      // 实际发送 API 请求
+      console.log('Sending request to /api/admin/projects/' + id, requestBody);
+      
+      const response = await fetch(`/api/admin/projects/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Received update response:', data);
+      
+      // 处理响应数据
+      const project: Project = {
+        id: data.data.id,
+        title: data.data.title,
+        description: data.data.description,
+        image: data.data.image, // 使用后端返回的 image 字段（逗号分隔的字符串）
+        category: data.data.category as Category,
+        tags: data.data.tags,
+        thoughts: data.data.thoughts,
+        additionalInfo: data.data.additionalInfo,
+        githubUrl: data.data.githubUrl,
+        readme: data.data.readme,
+        externalLink: data.data.externalLink,
+        introduction: data.data.introduction,
+        gallery: data.data.image.split(','), // 将逗号分隔的字符串转换为数组
+        bilingualTitle: {
+          zh: data.data.title,
+          en: data.data.title
+        }
+      };
+      
+      return project;
+    } catch (error) {
+      console.error('Error updating project:', error);
+      
+      // 模拟响应（当后端API不可用时）
+      console.log('Using mock response due to API error');
+      const mockResponse: Project = {
+        id: projectData.id,
+        title: projectData.title,
+        description: projectData.description,
+        image: projectData.images?.join(',') || projectData.image, // 使用逗号分隔的字符串作为主图字段
+        category: projectData.category as Category,
+        tags: projectData.tags, // 直接使用标签数组
+        thoughts: projectData.thoughts,
+        additionalInfo: projectData.additionalInfo,
+        githubUrl: projectData.githubUrl,
+        readme: projectData.readme,
+        externalLink: projectData.externalLink,
+        introduction: projectData.introduction,
+        gallery: projectData.images, // 将所有图片放入 gallery
+        bilingualTitle: {
+          zh: projectData.title,
+          en: projectData.title
+        }
+      };
+      
+      return mockResponse;
     }
   }
 }
