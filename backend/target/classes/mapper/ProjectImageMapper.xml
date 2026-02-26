@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bamdow.mapper.ProjectImageMapper">
+    <insert id="insert" parameterType="com.bamdow.pojo.entity.ProjectImage">
+        INSERT INTO project_images (
+            id,
+            project_id,
+            image_url,
+            sort_order
+        ) VALUES (
+            #{id},
+            #{projectId},
+            #{imageUrl},
+            #{sortOrder}
+        )
+    </insert>
+    <delete id="deleteByProjectId" parameterType="java.lang.String">
+        DELETE FROM project_images WHERE project_id = #{projectId}
+    </delete>
+</mapper>
