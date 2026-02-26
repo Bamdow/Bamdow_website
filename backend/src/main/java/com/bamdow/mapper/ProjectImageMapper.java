@@ -1,6 +1,7 @@
 package com.bamdow.mapper;
 
 import com.bamdow.pojo.entity.ProjectImage;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 

@@ -319,8 +319,9 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
       // Call API to create project
       const newProject = await ApiService.createProject(requestData);
       
-      // Add new project to list
-      setProjects(prev => [newProject, ...prev]);
+      // 重新获取项目列表，确保页面更新
+      const updatedProjects = await ApiService.getProjects(language, filter);
+      setProjects(updatedProjects);
       
       // Reset form and close modal
       setAddFormData({
@@ -368,10 +369,9 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
       // Call API to update project
       const updatedProject = await ApiService.updateProject(requestData);
       
-      // Update project in list
-      setProjects(prev => prev.map(project => 
-        project.id === updatedProject.id ? updatedProject : project
-      ));
+      // 重新获取项目列表，确保页面更新
+      const updatedProjects = await ApiService.getProjects(language, filter);
+      setProjects(updatedProjects);
       
       // Reset form and close modal
       setEditFormData({
@@ -458,12 +458,25 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                   }`}
                   title={language === 'zh' ? '删除选中作品' : 'Delete Selected Projects'}
-                  onClick={() => {
+                  onClick={async () => {
                     if (selectedProjects.length > 0) {
-                      // Delete selected projects logic (will be implemented later with backend)
-                      console.log('Delete selected projects:', selectedProjects);
-                      // For now, just remove from selected list
-                      setSelectedProjects([]);
+                      try {
+                        setFormLoading(true);
+                        // Call API to delete selected projects
+                        const success = await ApiService.deleteProjects(selectedProjects);
+                        if (success) {
+                          // 重新获取项目列表，确保页面更新
+                          const updatedProjects = await ApiService.getProjects(language, filter);
+                          setProjects(updatedProjects);
+                          // Clear selection
+                          setSelectedProjects([]);
+                        }
+                      } catch (error) {
+                        console.error('Error deleting projects:', error);
+                        setFormError(language === 'zh' ? '删除项目失败，请重试' : 'Failed to delete projects, please try again');
+                      } finally {
+                        setFormLoading(false);
+                      }
                     }
                   }}
                   disabled={selectedProjects.length === 0}
@@ -1081,29 +1094,247 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                    <X size={24} className="text-black dark:text-white" />
                  </button>
 
-                 {displayProject.category === Category.PHOTO ? (
-                    // SPECIAL PHOTO LAYOUT
-                    <div className="p-6 md:p-12 flex flex-col min-h-full">
-                        {(() => {
-                            const gallery = displayProject.gallery || PHOTOGRAPHY_GALLERY[displayProject.id];
-                            return gallery && gallery.length > 0 ? (
-                                <>
-                                    {/* Image Grid - Show only 9 images */}
-                                    <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4 mb-12">
-                                        {gallery.slice(0, 9).map((item, idx) => (
-                                            <GalleryImage 
-                                                key={idx}
-                                                src={item}
-                                                alt={`${displayProject.title} ${idx + 1}`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setLightboxIndex(idx);
-                                                }}
-                                            />
-                                        ))}
+                 {(() => {
+                    const gallery = displayProject.gallery || PHOTOGRAPHY_GALLERY[displayProject.id] || [];
+                    const hasSingleImage = gallery.length === 1;
+                    const hasMultipleImages = gallery.length > 1;
+                    const isPhotoCategory = displayProject.category === Category.PHOTO;
+                    const isDevCategory = displayProject.category === Category.DEV;
+                    const isOtherCategory = displayProject.category === Category.OTHER;
+                    
+                    // Check if we should use the single image layout
+                    const useSingleImageLayout = hasSingleImage && (isPhotoCategory || isDevCategory || isOtherCategory);
+                    // Check if we should use the grid layout
+                    const useGridLayout = hasMultipleImages && (isPhotoCategory || isDevCategory || isOtherCategory);
+                    
+                    if (useSingleImageLayout) {
+                        // Single image layout for all categories when only one image
+                        return (
+                            <>
+                                {/* Hero Image */}
+                                <div className={`
+                                    w-full bg-gray-200 dark:bg-gray-800 relative group-modal-media shrink-0
+                                    h-[30vh] md:h-[50vh]
+                                `}>
+                                    <img 
+                                        src={gallery[0]} 
+                                        alt={displayProject.title} 
+                                        referrerPolicy="no-referrer"
+                                        className="w-full h-full object-cover cursor-zoom-in"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setLightboxIndex(0);
+                                        }}
+                                    />
+                                    <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+                                </div>
+                                
+                                {/* Content based on category */}
+                                {isPhotoCategory ? (
+                                    <div className="p-6 md:p-12 flex flex-col min-h-full">
+                                        {/* Detailed Info Section - Similar to videography layout */}
+                                        <div className="w-full">
+                                            <div className="mb-8 md:mb-12">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <span className="px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black text-sm font-bold uppercase rounded-md">
+                                                        静态摄影
+                                                    </span>
+                                                    <span className="text-gray-500 font-mono text-sm uppercase font-bold tracking-widest">{displayProject.subtitle}</span>
+                                                </div>
+                                                <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-6 leading-tight">
+                                                    {displayProject.title}
+                                                </h2>
+                                                <p className="text-2xl md:text-3xl font-medium text-gray-600 dark:text-gray-300 max-w-3xl leading-relaxed">
+                                                    {displayProject.description}
+                                                </p>
+                                            </div>
+
+                                            <div className="w-full h-[1px] bg-gray-200 dark:bg-gray-700 mb-8 md:mb-12"></div>
+
+                                            {/* Horizontal Info Sections */}
+                                            <div className="flex flex-col md:flex-row gap-8 md:gap-12 w-full">
+                                                {/* Section 1: 思路&感受 */}
+                                                <div className="flex-1 space-y-6">
+                                                    <h3 className="text-2xl font-black uppercase tracking-wide text-black dark:text-white border-l-4 border-black dark:border-white pl-6">
+                                                        {language === 'zh' ? '思路&感受' : 'Thoughts & Feelings'}
+                                                    </h3>
+                                                    <p className="text-xl leading-relaxed text-gray-600 dark:text-gray-300">
+                                                        {displayProject.thoughts || '通过镜头捕捉生活中的美好瞬间，记录下那些转瞬即逝的情感与故事。每一张照片都承载着独特的视角和深刻的感悟，是对生活的致敬与表达。'}
+                                                    </p>
+                                                </div>
+
+                                                {/* Section 2: 补充 */}
+                                                <div className="flex-1 space-y-6">
+                                                    <h3 className="text-2xl font-black uppercase tracking-wide text-black dark:text-white border-l-4 border-black dark:border-white pl-6">
+                                                        {language === 'zh' ? '补充' : 'Additional Info'}
+                                                    </h3>
+                                                    <p className="text-xl leading-relaxed text-gray-600 dark:text-gray-300">
+                                                        {displayProject.additionalInfo || '这里是补充信息，可以包含获奖情况、分工与职责等内容。'}
+                                                    </p>
+                                                </div>
+
+                                                {/* Section 3: TAGS */}
+                                                <div className="flex-1 space-y-6">
+                                                    <h3 className="text-2xl font-black uppercase tracking-wide text-black dark:text-white border-l-4 border-black dark:border-white pl-6">
+                                                        {language === 'zh' ? 'TAGS' : 'Tags'}
+                                                    </h3>
+                                                    <div className="flex flex-wrap gap-3">
+                                                        {displayProject.tags && displayProject.tags.length > 0 ? (
+                                                            displayProject.tags.map((tag, i) => (
+                                                                <span key={i} className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-black dark:text-white text-sm font-bold rounded-md">
+                                                                    {tag}
+                                                                </span>
+                                                            ))
+                                                        ) : (
+                                                            ['摄影', '艺术', '创作'].map((tag, i) => (
+                                                                <span key={i} className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-black dark:text-white text-sm font-bold rounded-md">
+                                                                    {tag}
+                                                                </span>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    
-                                    {/* Detailed Info Section - Similar to videography layout */}
+                                ) : (
+                                    // Default layout for DEV and OTHER categories
+                                    <div className="p-6 md:p-12">
+                                        {/* Header */}
+                                        <div className="mb-8 md:mb-12">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <span className="px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black text-sm font-bold uppercase rounded-md">
+                                                    {CATEGORY_LABELS[language][displayProject.category] || displayProject.category}
+                                                </span>
+                                                <span className="text-gray-500 font-mono text-sm uppercase font-bold tracking-widest">{displayProject.subtitle}</span>
+                                            </div>
+                                            <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-6 leading-tight">
+                                                {displayProject.title}
+                                            </h2>
+                                            <p className="text-2xl md:text-3xl font-medium text-gray-600 dark:text-gray-300 max-w-3xl leading-relaxed">
+                                                {displayProject.description}
+                                            </p>
+                                        </div>
+
+                                        <div className="w-full h-[1px] bg-gray-200 dark:bg-gray-700 mb-8 md:mb-12"></div>
+
+                                        {/* Grid Info */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20">
+                                            
+                                            {/* Left Col: Concept - Thinner Line */}
+                                            {(displayProject.thoughts || displayProject.additionalInfo) && (
+                                                <div className="space-y-8">
+                                                    <h3 className="text-2xl font-black uppercase tracking-wide text-black dark:text-white border-l-4 border-black dark:border-white pl-6">
+                                                        {language === 'zh' ? '设计意图 / 创意陈述' : 'Concept / Statement'}
+                                                    </h3>
+                                                    <p className="text-xl leading-relaxed text-gray-600 dark:text-gray-300">
+                                                        {displayProject.thoughts || displayProject.additionalInfo || '项目描述'}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Right Col: Details */}
+                                            <div className="space-y-10">
+                                                {/* Awards - Aligned Star */}
+                                                {displayProject.awards && displayProject.awards.length > 0 && (
+                                                    <div className="space-y-4">
+                                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                            {language === 'zh' ? '获奖情况' : 'Awards & Recognition'}
+                                                        </h4>
+                                                        <ul className="space-y-3">
+                                                            {displayProject.awards.map((award, i) => {
+                                                                const isNone = award === "暂无获奖" || award === "无" || award === "None";
+                                                                return (
+                                                                    <li key={i} className={`flex items-baseline font-bold text-xl ${isNone ? 'text-gray-400 dark:text-gray-500' : 'text-black dark:text-white'}`}>
+                                                                        <span className={`mr-3 text-lg flex-shrink-0 ${isNone ? 'text-gray-300 dark:text-gray-600' : 'text-yellow-500'}`}>★</span> 
+                                                                        <span>{award}</span>
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    </div>
+                                                )}
+
+                                                {/* ReadMe, Tags, GitHub Links - Flex Row */}
+                                                <div className="flex flex-row gap-8 items-start flex-wrap">
+                                                    {/* ReadMe or Introduction based on category */}
+                                                    <div className="space-y-4 flex-1 min-w-[200px]">
+                                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                            {displayProject.category === Category.OTHER ? 
+                                                              (language === 'zh' ? '介绍' : 'Introduction') : 
+                                                              (language === 'zh' ? 'ReadMe' : 'ReadMe')}
+                                                        </h4>
+                                                        <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+                                                            {displayProject.category === Category.OTHER ? 
+                                                              (displayProject.introduction || displayProject.description) : 
+                                                              (displayProject.readme || displayProject.role || '项目说明')}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Tags */}
+                                                    <div className="space-y-4 flex-1 min-w-[200px]">
+                                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">Tags</h4>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {displayProject.tags.map(tag => (
+                                                                <span key={tag} className="text-xs font-bold font-mono text-gray-500 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-lg">{tag}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Links */}
+                                                    <div className="space-y-4 flex-1 min-w-[200px]">
+                                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                            {language === 'zh' ? '链接' : 'Links'}
+                                                        </h4>
+                                                        <div className="flex flex-wrap gap-4">
+                                                            {displayProject.githubUrl ? (
+                                                                <a href={displayProject.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                                                    <Github size={18} />
+                                                                    <span className="font-bold underline decoration-2 underline-offset-4 text-sm">GitHub</span>
+                                                                </a>
+                                                            ) : null}
+                                                            {displayProject.externalLink ? (
+                                                                <a href={displayProject.externalLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                                                    <ExternalLink size={18} />
+                                                                    <span className="font-bold underline decoration-2 underline-offset-4 text-sm">{language === 'zh' ? '外部链接' : 'External Link'}</span>
+                                                                </a>
+                                                            ) : null}
+                                                            {!displayProject.githubUrl && !displayProject.externalLink && (
+                                                                <p className="text-gray-400 dark:text-gray-500 text-sm">{language === 'zh' ? '暂无链接' : 'No links available'}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+                                )}
+                            </>
+                        );
+                    } else if (useGridLayout) {
+                        // Grid layout for all categories when multiple images (max 9)
+                        return (
+                            <div className="p-6 md:p-12 flex flex-col min-h-full">
+                                {/* Image Grid - Show only 9 images */}
+                                <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4 mb-12">
+                                    {gallery.slice(0, 9).map((item, idx) => (
+                                        <GalleryImage 
+                                            key={idx}
+                                            src={item}
+                                            alt={`${displayProject.title} ${idx + 1}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setLightboxIndex(idx);
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                                
+                                {/* Content based on category */}
+                                {isPhotoCategory ? (
                                     <div className="w-full">
                                         <div className="mb-8 md:mb-12">
                                             <div className="flex items-center gap-3 mb-4">
@@ -1167,194 +1398,304 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                                             </div>
                                         </div>
                                     </div>
-                                </>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-64 w-full border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[2rem]">
-                                    <p className="text-gray-400 font-mono">No images found in local folder.</p>
-                                </div>
-                            );
-                        })()}
-                    </div>
-                 ) : (
-                    // DEFAULT LAYOUT FOR OTHER CATEGORIES
-                    <>
-                     {/* Hero Media (Video, Bilibili, Figma or Image) */}
-                     <div className={`
-                        w-full bg-gray-200 dark:bg-gray-800 relative group-modal-media shrink-0
-                        ${(displayProject.figmaUrl || displayProject.websiteUrl) ? 'h-[60vh] md:h-[80vh]' : 
-                          (displayProject.videoUrl || displayProject.bilibiliId) ? 'aspect-video' : 
-                          'h-[30vh] md:h-[50vh]'}
-                     `}>
-                        {displayProject.videoUrl ? (
-                           <video 
-                              src={displayProject.videoUrl} 
-                              controls 
-                              className="w-full h-full object-contain bg-black"
-                              poster={displayProject.image}
-                           />
-                        ) : displayProject.bilibiliId ? (
-                           // Bilibili Player with Click-to-Load Optimization
-                           <div className="w-full h-full bg-black relative group">
-                                <iframe
-                                    src={`https://player.bilibili.com/player.html?bvid=${displayProject.bilibiliId}&page=1&high_quality=1&danmaku=0&autoplay=0`}
-                                    className="w-full h-full relative z-10"
-                                    scrolling="no"
-                                    frameBorder="0"
-                                    allowFullScreen
-                                    sandbox="allow-top-navigation allow-same-origin allow-forms allow-scripts allow-presentation"
-                                ></iframe>
-                           </div>
-                        ) : displayProject.figmaUrl ? (
-                           <iframe
-                             src={`https://www.figma.com/embed?embed_host=share&url=${encodeURIComponent(displayProject.figmaUrl)}`}
-                             className="w-full h-full border-none"
-                             allowFullScreen
-                           ></iframe>
-                        ) : displayProject.websiteUrl ? (
-                           <iframe
-                             src={displayProject.websiteUrl}
-                             className="w-full h-full border-none bg-white"
-                             title={displayProject.title}
-                             allowFullScreen
-                           ></iframe>
-                        ) : (
-                           <>
-                              {displayProject.image && !displayProject.image.includes('picsum') ? (
-                                  <img 
-                                    src={displayProject.image} 
-                                    alt={displayProject.title} 
-                                    referrerPolicy="no-referrer"
-                                    className="w-full h-full object-cover" 
-                                  />
-                              ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-gray-300 dark:bg-gray-800">
-                                      <div className="text-center">
-                                          <h2 className="text-4xl font-black text-black/20 dark:text-white/20 mb-2">{displayProject.title}</h2>
-                                          <p className="text-xl font-bold text-black/20 dark:text-white/20 uppercase tracking-widest">
-                                              {language === 'zh' ? '预览部署中...' : 'Preview Deploying...'}
-                                          </p>
-                                      </div>
-                                  </div>
-                              )}
-                              <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
-                           </>
-                        )}
-                     </div>
+                                ) : (
+                                    <div className="w-full">
+                                        <div className="mb-8 md:mb-12">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <span className="px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black text-sm font-bold uppercase rounded-md">
+                                                    {CATEGORY_LABELS[language][displayProject.category] || displayProject.category}
+                                                </span>
+                                                <span className="text-gray-500 font-mono text-sm uppercase font-bold tracking-widest">{displayProject.subtitle}</span>
+                                            </div>
+                                            <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-6 leading-tight">
+                                                {displayProject.title}
+                                            </h2>
+                                            <p className="text-2xl md:text-3xl font-medium text-gray-600 dark:text-gray-300 max-w-3xl leading-relaxed">
+                                                {displayProject.description}
+                                            </p>
+                                        </div>
 
-                     <div className="p-6 md:p-12">
-                       {/* Header */}
-                       <div className="mb-8 md:mb-12">
-                         <div className="flex items-center gap-3 mb-4">
-                           <span className="px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black text-sm font-bold uppercase rounded-md">
-                             {CATEGORY_LABELS[language][displayProject.category] || displayProject.category}
-                           </span>
-                           <span className="text-gray-500 font-mono text-sm uppercase font-bold tracking-widest">{displayProject.subtitle}</span>
-                         </div>
-                         <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-6 leading-tight">
-                           {displayProject.title}
-                         </h2>
-                         <p className="text-2xl md:text-3xl font-medium text-gray-600 dark:text-gray-300 max-w-3xl leading-relaxed">
-                           {displayProject.description}
-                         </p>
-                       </div>
+                                        <div className="w-full h-[1px] bg-gray-200 dark:bg-gray-700 mb-8 md:mb-12"></div>
 
-                       <div className="w-full h-[1px] bg-gray-200 dark:bg-gray-700 mb-8 md:mb-12"></div>
+                                        {/* Grid Info */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20">
+                                            
+                                            {/* Left Col: Concept - Thinner Line */}
+                                            {(displayProject.thoughts || displayProject.additionalInfo) && (
+                                                <div className="space-y-8">
+                                                    <h3 className="text-2xl font-black uppercase tracking-wide text-black dark:text-white border-l-4 border-black dark:border-white pl-6">
+                                                        {language === 'zh' ? '设计意图 / 创意陈述' : 'Concept / Statement'}
+                                                    </h3>
+                                                    <p className="text-xl leading-relaxed text-gray-600 dark:text-gray-300">
+                                                        {displayProject.thoughts || displayProject.additionalInfo || '项目描述'}
+                                                    </p>
+                                                </div>
+                                            )}
 
-                       {/* Grid Info */}
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20">
-                         
-                         {/* Left Col: Concept - Thinner Line */}
-                         {(displayProject.thoughts || displayProject.additionalInfo) && (
-                             <div className="space-y-8">
-                                <h3 className="text-2xl font-black uppercase tracking-wide text-black dark:text-white border-l-4 border-black dark:border-white pl-6">
-                                  {language === 'zh' ? '设计意图 / 创意陈述' : 'Concept / Statement'}
-                                </h3>
-                                <p className="text-xl leading-relaxed text-gray-600 dark:text-gray-300">
-                                   {displayProject.thoughts || displayProject.additionalInfo || '项目描述'}
-                                </p>
-                             </div>
-                         )}
+                                            {/* Right Col: Details */}
+                                            <div className="space-y-10">
+                                                {/* Awards - Aligned Star */}
+                                                {displayProject.awards && displayProject.awards.length > 0 && (
+                                                    <div className="space-y-4">
+                                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                            {language === 'zh' ? '获奖情况' : 'Awards & Recognition'}
+                                                        </h4>
+                                                        <ul className="space-y-3">
+                                                            {displayProject.awards.map((award, i) => {
+                                                                const isNone = award === "暂无获奖" || award === "无" || award === "None";
+                                                                return (
+                                                                    <li key={i} className={`flex items-baseline font-bold text-xl ${isNone ? 'text-gray-400 dark:text-gray-500' : 'text-black dark:text-white'}`}>
+                                                                        <span className={`mr-3 text-lg flex-shrink-0 ${isNone ? 'text-gray-300 dark:text-gray-600' : 'text-yellow-500'}`}>★</span> 
+                                                                        <span>{award}</span>
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    </div>
+                                                )}
 
-                         {/* Right Col: Details */}
-                         <div className="space-y-10">
-                            {/* Awards - Aligned Star */}
-                            {displayProject.awards && displayProject.awards.length > 0 && (
-                                <div className="space-y-4">
-                                  <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
-                                    {language === 'zh' ? '获奖情况' : 'Awards & Recognition'}
-                                  </h4>
-                                  <ul className="space-y-3">
-                                        {displayProject.awards.map((award, i) => {
-                                          const isNone = award === "暂无获奖" || award === "无" || award === "None";
-                                          return (
-                                            <li key={i} className={`flex items-baseline font-bold text-xl ${isNone ? 'text-gray-400 dark:text-gray-500' : 'text-black dark:text-white'}`}>
-                                              <span className={`mr-3 text-lg flex-shrink-0 ${isNone ? 'text-gray-300 dark:text-gray-600' : 'text-yellow-500'}`}>★</span> 
-                                              <span>{award}</span>
-                                            </li>
-                                          );
-                                        })}
-                                  </ul>
-                                </div>
-                            )}
+                                                {/* ReadMe, Tags, GitHub Links - Flex Row */}
+                                                <div className="flex flex-row gap-8 items-start flex-wrap">
+                                                    {/* ReadMe or Introduction based on category */}
+                                                    <div className="space-y-4 flex-1 min-w-[200px]">
+                                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                            {displayProject.category === Category.OTHER ? 
+                                                              (language === 'zh' ? '介绍' : 'Introduction') : 
+                                                              (language === 'zh' ? 'ReadMe' : 'ReadMe')}
+                                                        </h4>
+                                                        <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+                                                            {displayProject.category === Category.OTHER ? 
+                                                              (displayProject.introduction || displayProject.description) : 
+                                                              (displayProject.readme || displayProject.role || '项目说明')}
+                                                        </p>
+                                                    </div>
 
-                            {/* ReadMe, Tags, GitHub Links - Flex Row */}
-                            <div className="flex flex-row gap-8 items-start flex-wrap">
-                                {/* ReadMe or Introduction based on category */}
-                                <div className="space-y-4 flex-1 min-w-[200px]">
-                                    <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
-                                        {displayProject.category === Category.OTHER ? 
-                                          (language === 'zh' ? '介绍' : 'Introduction') : 
-                                          (language === 'zh' ? 'ReadMe' : 'ReadMe')}
-                                    </h4>
-                                    <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
-                                        {displayProject.category === Category.OTHER ? 
-                                          (displayProject.introduction || displayProject.description) : 
-                                          (displayProject.readme || displayProject.role || '项目说明')}
-                                    </p>
-                                </div>
+                                                    {/* Tags */}
+                                                    <div className="space-y-4 flex-1 min-w-[200px]">
+                                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">Tags</h4>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {displayProject.tags.map(tag => (
+                                                                <span key={tag} className="text-xs font-bold font-mono text-gray-500 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-lg">{tag}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
 
-                                {/* Tags */}
-                                <div className="space-y-4 flex-1 min-w-[200px]">
-                                    <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">Tags</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {displayProject.tags.map(tag => (
-                                            <span key={tag} className="text-xs font-bold font-mono text-gray-500 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-lg">{tag}</span>
-                                        ))}
+                                                    {/* Links */}
+                                                    <div className="space-y-4 flex-1 min-w-[200px]">
+                                                        <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                            {language === 'zh' ? '链接' : 'Links'}
+                                                        </h4>
+                                                        <div className="flex flex-wrap gap-4">
+                                                            {displayProject.githubUrl ? (
+                                                                <a href={displayProject.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                                                    <Github size={18} />
+                                                                    <span className="font-bold underline decoration-2 underline-offset-4 text-sm">GitHub</span>
+                                                                </a>
+                                                            ) : null}
+                                                            {displayProject.externalLink ? (
+                                                                <a href={displayProject.externalLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                                                    <ExternalLink size={18} />
+                                                                    <span className="font-bold underline decoration-2 underline-offset-4 text-sm">{language === 'zh' ? '外部链接' : 'External Link'}</span>
+                                                                </a>
+                                                            ) : null}
+                                                            {!displayProject.githubUrl && !displayProject.externalLink && (
+                                                                <p className="text-gray-400 dark:text-gray-500 text-sm">{language === 'zh' ? '暂无链接' : 'No links available'}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
                                     </div>
-                                </div>
-
-                                {/* Links */}
-                                <div className="space-y-4 flex-1 min-w-[200px]">
-                                    <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
-                                        {language === 'zh' ? '链接' : 'Links'}
-                                    </h4>
-                                    <div className="flex flex-wrap gap-4">
-                                        {displayProject.githubUrl ? (
-                                            <a href={displayProject.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                                <Github size={18} />
-                                                <span className="font-bold underline decoration-2 underline-offset-4 text-sm">GitHub</span>
-                                            </a>
-                                        ) : null}
-                                        {displayProject.externalLink ? (
-                                            <a href={displayProject.externalLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                                <ExternalLink size={18} />
-                                                <span className="font-bold underline decoration-2 underline-offset-4 text-sm">{language === 'zh' ? '外部链接' : 'External Link'}</span>
-                                            </a>
-                                        ) : null}
-                                        {!displayProject.githubUrl && !displayProject.externalLink && (
-                                            <p className="text-gray-400 dark:text-gray-500 text-sm">{language === 'zh' ? '暂无链接' : 'No links available'}</p>
-                                        )}
-                                    </div>
-                                </div>
+                                )}
                             </div>
+                        );
+                    } else {
+                        // Default layout for categories without gallery or with other media types
+                        return (
+                            <>
+                                {/* Hero Media (Video, Bilibili, Figma or Image) */}
+                                <div className={`
+                                    w-full bg-gray-200 dark:bg-gray-800 relative group-modal-media shrink-0
+                                    ${(displayProject.figmaUrl || displayProject.websiteUrl) ? 'h-[60vh] md:h-[80vh]' : 
+                                      (displayProject.videoUrl || displayProject.bilibiliId) ? 'aspect-video' : 
+                                      'h-[30vh] md:h-[50vh]'}
+                                `}>
+                                    {displayProject.videoUrl ? (
+                                        <video 
+                                            src={displayProject.videoUrl} 
+                                            controls 
+                                            className="w-full h-full object-contain bg-black"
+                                            poster={displayProject.image}
+                                        />
+                                    ) : displayProject.bilibiliId ? (
+                                        // Bilibili Player with Click-to-Load Optimization
+                                        <div className="w-full h-full bg-black relative group">
+                                            <iframe
+                                                src={`https://player.bilibili.com/player.html?bvid=${displayProject.bilibiliId}&page=1&high_quality=1&danmaku=0&autoplay=0`}
+                                                className="w-full h-full relative z-10"
+                                                scrolling="no"
+                                                frameBorder="0"
+                                                allowFullScreen
+                                                sandbox="allow-top-navigation allow-same-origin allow-forms allow-scripts allow-presentation"
+                                            ></iframe>
+                                        </div>
+                                    ) : displayProject.figmaUrl ? (
+                                        <iframe
+                                            src={`https://www.figma.com/embed?embed_host=share&url=${encodeURIComponent(displayProject.figmaUrl)}`}
+                                            className="w-full h-full border-none"
+                                            allowFullScreen
+                                        ></iframe>
+                                    ) : displayProject.websiteUrl ? (
+                                        <iframe
+                                            src={displayProject.websiteUrl}
+                                            className="w-full h-full border-none bg-white"
+                                            title={displayProject.title}
+                                            allowFullScreen
+                                        ></iframe>
+                                    ) : (
+                                        <>
+                                            {displayProject.image && !displayProject.image.includes('picsum') ? (
+                                                <img 
+                                                    src={displayProject.image} 
+                                                    alt={displayProject.title} 
+                                                    referrerPolicy="no-referrer"
+                                                    className="w-full h-full object-cover" 
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-gray-300 dark:bg-gray-800">
+                                                    <div className="text-center">
+                                                        <h2 className="text-4xl font-black text-black/20 dark:text-white/20 mb-2">{displayProject.title}</h2>
+                                                        <p className="text-xl font-bold text-black/20 dark:text-white/20 uppercase tracking-widest">
+                                                            {language === 'zh' ? '预览部署中...' : 'Preview Deploying...'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+                                        </>
+                                    )}
+                                </div>
 
-                         </div>
+                                <div className="p-6 md:p-12">
+                                    {/* Header */}
+                                    <div className="mb-8 md:mb-12">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <span className="px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black text-sm font-bold uppercase rounded-md">
+                                                {CATEGORY_LABELS[language][displayProject.category] || displayProject.category}
+                                            </span>
+                                            <span className="text-gray-500 font-mono text-sm uppercase font-bold tracking-widest">{displayProject.subtitle}</span>
+                                        </div>
+                                        <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-6 leading-tight">
+                                            {displayProject.title}
+                                        </h2>
+                                        <p className="text-2xl md:text-3xl font-medium text-gray-600 dark:text-gray-300 max-w-3xl leading-relaxed">
+                                            {displayProject.description}
+                                        </p>
+                                    </div>
 
-                       </div>
+                                    <div className="w-full h-[1px] bg-gray-200 dark:bg-gray-700 mb-8 md:mb-12"></div>
 
-                     </div>
-                   </>
-                 )}
+                                    {/* Grid Info */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20">
+                                        
+                                        {/* Left Col: Concept - Thinner Line */}
+                                        {(displayProject.thoughts || displayProject.additionalInfo) && (
+                                            <div className="space-y-8">
+                                                <h3 className="text-2xl font-black uppercase tracking-wide text-black dark:text-white border-l-4 border-black dark:border-white pl-6">
+                                                    {language === 'zh' ? '设计意图 / 创意陈述' : 'Concept / Statement'}
+                                                </h3>
+                                                <p className="text-xl leading-relaxed text-gray-600 dark:text-gray-300">
+                                                    {displayProject.thoughts || displayProject.additionalInfo || '项目描述'}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Right Col: Details */}
+                                        <div className="space-y-10">
+                                            {/* Awards - Aligned Star */}
+                                            {displayProject.awards && displayProject.awards.length > 0 && (
+                                                <div className="space-y-4">
+                                                    <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                        {language === 'zh' ? '获奖情况' : 'Awards & Recognition'}
+                                                    </h4>
+                                                    <ul className="space-y-3">
+                                                        {displayProject.awards.map((award, i) => {
+                                                            const isNone = award === "暂无获奖" || award === "无" || award === "None";
+                                                            return (
+                                                                <li key={i} className={`flex items-baseline font-bold text-xl ${isNone ? 'text-gray-400 dark:text-gray-500' : 'text-black dark:text-white'}`}>
+                                                                    <span className={`mr-3 text-lg flex-shrink-0 ${isNone ? 'text-gray-300 dark:text-gray-600' : 'text-yellow-500'}`}>★</span> 
+                                                                    <span>{award}</span>
+                                                                </li>
+                                                            );
+                                                        })}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            {/* ReadMe, Tags, GitHub Links - Flex Row */}
+                                            <div className="flex flex-row gap-8 items-start flex-wrap">
+                                                {/* ReadMe or Introduction based on category */}
+                                                <div className="space-y-4 flex-1 min-w-[200px]">
+                                                    <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                        {displayProject.category === Category.OTHER ? 
+                                                          (language === 'zh' ? '介绍' : 'Introduction') : 
+                                                          (language === 'zh' ? 'ReadMe' : 'ReadMe')}
+                                                    </h4>
+                                                    <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+                                                        {displayProject.category === Category.OTHER ? 
+                                                          (displayProject.introduction || displayProject.description) : 
+                                                          (displayProject.readme || displayProject.role || '项目说明')}
+                                                    </p>
+                                                </div>
+
+                                                {/* Tags */}
+                                                <div className="space-y-4 flex-1 min-w-[200px]">
+                                                    <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">Tags</h4>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {displayProject.tags.map(tag => (
+                                                            <span key={tag} className="text-xs font-bold font-mono text-gray-500 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-lg">{tag}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Links */}
+                                                <div className="space-y-4 flex-1 min-w-[200px]">
+                                                    <h4 className="text-base font-bold uppercase text-gray-400 dark:text-gray-500 tracking-wider">
+                                                        {language === 'zh' ? '链接' : 'Links'}
+                                                    </h4>
+                                                    <div className="flex flex-wrap gap-4">
+                                                        {displayProject.githubUrl ? (
+                                                            <a href={displayProject.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                                                <Github size={18} />
+                                                                <span className="font-bold underline decoration-2 underline-offset-4 text-sm">GitHub</span>
+                                                            </a>
+                                                        ) : null}
+                                                        {displayProject.externalLink ? (
+                                                            <a href={displayProject.externalLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                                                <ExternalLink size={18} />
+                                                                <span className="font-bold underline decoration-2 underline-offset-4 text-sm">{language === 'zh' ? '外部链接' : 'External Link'}</span>
+                                                            </a>
+                                                        ) : null}
+                                                        {!displayProject.githubUrl && !displayProject.externalLink && (
+                                                            <p className="text-gray-400 dark:text-gray-500 text-sm">{language === 'zh' ? '暂无链接' : 'No links available'}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </>
+                        );
+                    }
+                 })()}
                </>
              )}
              </div>
@@ -2066,6 +2407,78 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
                      <h4 className="text-lg font-bold text-black dark:text-white">
                        {language === 'zh' ? '其他特有信息' : 'Other Specific'}
                      </h4>
+                     
+                     {/* Image Section */}
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">
+                         {language === 'zh' ? '图片' : 'Images'}
+                       </label>
+                       <div className="grid grid-cols-3 gap-4">
+                         {/* Display existing images */}
+                         {editFormData.images.map((imageUrl, index) => (
+                           <div key={index} className="aspect-square relative">
+                             <img
+                               src={imageUrl}
+                               alt={`Uploaded Image ${index + 1}`}
+                               className="w-full h-full object-cover rounded-lg"
+                             />
+                             <button
+                               type="button"
+                               onClick={() => {
+                                 setEditFormData(prev => ({
+                                   ...prev,
+                                   images: prev.images.filter((_, i) => i !== index)
+                                 }));
+                               }}
+                               className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                             >
+                               <X size={16} />
+                             </button>
+                           </div>
+                         ))}
+                         
+                         {/* Add new image button */}
+                         <div
+                           className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300 cursor-pointer"
+                           onClick={(e) => {
+                             const input = e.currentTarget.querySelector('input[type="file"]');
+                             if (input) {
+                               input.click();
+                             }
+                           }}
+                         >
+                           <input
+                             type="file"
+                             accept="image/*"
+                             multiple
+                             className="hidden"
+                             onChange={(e) => {
+                               const files = Array.from(e.target.files || []);
+                               if (files.length > 0) {
+                                 const uploadImages = async () => {
+                                   try {
+                                     setFormLoading(true);
+                                     const imageUrls = await ApiService.uploadImages(files);
+                                     setEditFormData(prev => ({
+                                       ...prev,
+                                       images: [...prev.images, ...imageUrls]
+                                     }));
+                                     setFormError(null);
+                                   } catch (error) {
+                                     console.error('Error uploading images:', error);
+                                     setFormError(language === 'zh' ? '图片上传失败，请重试' : 'Image upload failed, please try again');
+                                   } finally {
+                                     setFormLoading(false);
+                                   }
+                                 };
+                                 uploadImages();
+                               }
+                             }}
+                           />
+                           <Plus size={32} className="text-gray-400 dark:text-gray-500" />
+                         </div>
+                       </div>
+                     </div>
 
                      <div>
                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">

@@ -82,6 +82,36 @@ paths:
                     example: success
                   data:
                     $ref: '#/components/schemas/ProjectDetailVO'
+    delete:
+      summary: 批量删除项目
+      description: 根据项目ID列表批量删除项目
+      parameters:
+        - name: ids
+          in: query
+          description: 项目ID列表，多个ID用逗号分隔
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+            style: form
+            explode: false
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    type: null
   /admin/projects/{id}:
     get:
       summary: 获取项目详情
@@ -141,32 +171,6 @@ paths:
                     example: success
                   data:
                     $ref: '#/components/schemas/ProjectDetailVO'
-    delete:
-      summary: 删除项目
-      description: 根据项目ID删除项目
-      parameters:
-        - name: id
-          in: path
-          description: 项目ID
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                    example: 200
-                  message:
-                    type: string
-                    example: success
-                  data:
-                    type: null
   /admin/upload/image:
     post:
       summary: 上传图片

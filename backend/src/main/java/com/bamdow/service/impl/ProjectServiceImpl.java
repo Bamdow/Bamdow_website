@@ -229,4 +229,22 @@ public class ProjectServiceImpl implements ProjectService {
         }
         log.info("更新项目成功ID: {}", id);
     }
+
+    @Override
+    public void deleteBatch(List<String> ids) {
+        for(String id:ids){
+            //拿到分类便于从副表同步删除信息
+            String category=projectMapper.getById(id).getCategory();
+            if ("Photography".equals(category)) {
+                photographyProjectMapper.deleteById(id);
+            } else if ("Development".equals(category)) {
+                developmentProjectMapper.deleteById(id);
+            } else if ("Other".equals(category)) {
+                otherProjectMapper.deleteById(id);
+            }
+            projectImageMapper.deleteByProjectId(id);
+            projectMapper.deleteById(id);
+        }
+        log.info("删除ID: {}成功", ids);
+    }
 }

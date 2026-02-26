@@ -6,6 +6,7 @@ import com.bamdow.pojo.vo.ProjectDetailVO;
 import com.bamdow.pojo.vo.ProjectListVO;
 import com.bamdow.pojo.vo.ProjectQueryVO;
 import com.github.pagehelper.Page;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -38,4 +39,11 @@ public interface ProjectMapper {
      * @param project
      */
     void update(Project project);
+
+    /**
+     * 根据id删除项目
+     * @param id
+     */
+    @Delete("delete from projects where id=#{id}")
+    void deleteById(String id);
 }

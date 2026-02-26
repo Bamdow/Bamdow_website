@@ -2,6 +2,7 @@ package com.bamdow.mapper;
 
 import com.bamdow.pojo.entity.OtherProject;
 import com.bamdow.pojo.entity.PhotographyProject;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -26,4 +27,11 @@ public interface OtherProjectMapper {
      * @param otherProject
      */
     void update(OtherProject otherProject);
+
+    /**
+     * 根据id删除项目
+     * @param id
+     */
+    @Delete("delete from other_projects where id=#{id}")
+    void deleteById(String id);
 }

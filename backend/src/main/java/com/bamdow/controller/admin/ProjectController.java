@@ -1,5 +1,4 @@
 package com.bamdow.controller.admin;
-
 import com.bamdow.pojo.dto.PageQuery;
 import com.bamdow.pojo.dto.ProjectCreateDTO;
 import com.bamdow.pojo.dto.ProjectUpdateDTO;
@@ -8,8 +7,11 @@ import com.bamdow.pojo.result.Result;
 import com.bamdow.pojo.vo.ProjectDetailVO;
 import com.bamdow.service.ProjectService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.annotations.Delete;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -49,5 +51,10 @@ public class ProjectController {
     }
 
 
-//    public Result delete(@PathVariable String id) {}
+    @DeleteMapping
+    public Result delete(@RequestParam List<String> ids) {
+        log.info("作品批量删除{}",ids);
+        projectService.deleteBatch(ids);
+        return Result.success();
+    }
 }
