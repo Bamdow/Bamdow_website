@@ -8,11 +8,13 @@ public class ProjectDetailVO {
     private String id;
     private String title;
     private String description;
-    private String image;
     private String category;
     private List<String> tags;
     private Timestamp createdAt;
     private Timestamp updatedAt;
+
+    // 图片URL列表
+    private List<String> images;
 
     // 摄影项目特有字段
     private String thoughts;

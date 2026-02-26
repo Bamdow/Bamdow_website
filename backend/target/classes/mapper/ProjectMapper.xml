@@ -9,14 +9,12 @@
             id,
             title,
             description,
-            image,
             category,
             tags
         ) VALUES (
             #{id},
             #{title},
             #{description},
-            #{image},
             #{category},
             #{tags}
         )
@@ -26,7 +24,6 @@
         set
             title = #{title},
             description=#{description},
-            image=#{image},
             tags=#{tags}
         where
             id=#{id}
@@ -38,7 +35,6 @@
             id,
             title,
             description,
-            image,
             category,
             tags
         FROM

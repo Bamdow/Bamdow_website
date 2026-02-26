@@ -46,12 +46,22 @@ export class ApiService {
       console.log('Received projects response:', data);
       
       // 处理后端返回的数据格式
+      // 清理图片URL，去除空格和反引号
+      const cleanImageUrl = (url: string) => {
+        return url.trim().replace(/[`]/g, '');
+      };
+      
       const projects = data.data.items.map((item: any) => {
+        // 优先使用images数组，如果不存在则使用image字段
+        const images = item.images || [];
+        const cleanedImages = Array.isArray(images) ? images.map(cleanImageUrl) : [];
+        const mainImage = cleanedImages.length > 0 ? cleanedImages[0] : (item.image ? cleanImageUrl(item.image) : '');
+        
         const project: any = {
           id: item.id,
           title: item.title,
           description: item.description,
-          image: item.image || '',
+          image: mainImage,
           category: item.category as Category,
           tags: item.tags || [],
           thoughts: item.thoughts || item.concept || '', // 确保thoughts字段有值，优先使用thoughts，否则使用concept，最后使用空字符串
@@ -60,7 +70,7 @@ export class ApiService {
           externalLink: item.externalLink,
           subtitle: item.subtitle,
           role: item.role,
-          gallery: item.image ? item.image.split(',').filter((url: string) => url.trim() !== '') : [],
+          gallery: cleanedImages.length > 0 ? cleanedImages : (item.image ? item.image.split(',').map(cleanImageUrl).filter((url: string) => url.trim() !== '') : []),
           bilingualTitle: item.bilingualTitle || {
             zh: item.title,
             en: item.title
@@ -150,11 +160,21 @@ export class ApiService {
       console.log('Received project detail response:', data);
       
       // 处理后端返回的数据格式
+      // 清理图片URL，去除空格和反引号
+      const cleanImageUrl = (url: string) => {
+        return url.trim().replace(/[`]/g, '');
+      };
+      
+      // 优先使用images数组，如果不存在则使用image字段
+      const images = data.data.images || [];
+      const cleanedImages = Array.isArray(images) ? images.map(cleanImageUrl) : [];
+      const mainImage = cleanedImages.length > 0 ? cleanedImages[0] : (data.data.image ? cleanImageUrl(data.data.image) : '');
+      
       const project: any = {
         id: data.data.id,
         title: data.data.title,
         description: data.data.description,
-        image: data.data.image || '',
+        image: mainImage,
         category: data.data.category as Category,
         tags: data.data.tags || [],
         thoughts: data.data.thoughts || data.data.concept || '', // 确保thoughts字段有值，优先使用thoughts，否则使用concept，最后使用空字符串
@@ -165,7 +185,7 @@ export class ApiService {
         introduction: data.data.introduction,
         subtitle: data.data.subtitle,
         role: data.data.role,
-        gallery: data.data.image ? data.data.image.split(',').filter((url: string) => url.trim() !== '') : [],
+        gallery: cleanedImages.length > 0 ? cleanedImages : (data.data.image ? data.data.image.split(',').map(cleanImageUrl).filter((url: string) => url.trim() !== '') : []),
         bilingualTitle: data.data.bilingualTitle || {
           zh: data.data.title,
           en: data.data.title
@@ -281,11 +301,21 @@ export class ApiService {
       console.log('Received response:', data);
       
       // 处理响应数据
+      // 清理图片URL，去除空格和反引号
+      const cleanImageUrl = (url: string) => {
+        return url.trim().replace(/[`]/g, '');
+      };
+      
+      // 优先使用images数组，如果不存在则使用image字段
+      const images = data.data.images || [];
+      const cleanedImages = Array.isArray(images) ? images.map(cleanImageUrl) : [];
+      const mainImage = cleanedImages.length > 0 ? cleanedImages[0] : (data.data.image ? cleanImageUrl(data.data.image) : '');
+      
       const project: Project = {
         id: data.data.id,
         title: data.data.title,
         description: data.data.description,
-        image: data.data.image, // 使用后端返回的 image 字段（逗号分隔的字符串）
+        image: mainImage,
         category: data.data.category as Category,
         tags: data.data.tags,
         thoughts: data.data.thoughts,
@@ -294,7 +324,7 @@ export class ApiService {
         readme: data.data.readme,
         externalLink: data.data.externalLink,
         introduction: data.data.introduction,
-        gallery: data.data.image.split(','), // 将逗号分隔的字符串转换为数组
+        gallery: cleanedImages.length > 0 ? cleanedImages : (data.data.image ? data.data.image.split(',').map(cleanImageUrl).filter((url: string) => url.trim() !== '') : []),
         bilingualTitle: {
           zh: data.data.title,
           en: data.data.title
@@ -429,11 +459,21 @@ export class ApiService {
       console.log('Received update response:', data);
       
       // 处理响应数据
+      // 清理图片URL，去除空格和反引号
+      const cleanImageUrl = (url: string) => {
+        return url.trim().replace(/[`]/g, '');
+      };
+      
+      // 优先使用images数组，如果不存在则使用image字段
+      const images = data.data.images || [];
+      const cleanedImages = Array.isArray(images) ? images.map(cleanImageUrl) : [];
+      const mainImage = cleanedImages.length > 0 ? cleanedImages[0] : (data.data.image ? cleanImageUrl(data.data.image) : '');
+      
       const project: Project = {
         id: data.data.id,
         title: data.data.title,
         description: data.data.description,
-        image: data.data.image, // 使用后端返回的 image 字段（逗号分隔的字符串）
+        image: mainImage,
         category: data.data.category as Category,
         tags: data.data.tags,
         thoughts: data.data.thoughts,
@@ -442,7 +482,7 @@ export class ApiService {
         readme: data.data.readme,
         externalLink: data.data.externalLink,
         introduction: data.data.introduction,
-        gallery: data.data.image.split(','), // 将逗号分隔的字符串转换为数组
+        gallery: cleanedImages.length > 0 ? cleanedImages : (data.data.image ? data.data.image.split(',').map(cleanImageUrl).filter((url: string) => url.trim() !== '') : []),
         bilingualTitle: {
           zh: data.data.title,
           en: data.data.title

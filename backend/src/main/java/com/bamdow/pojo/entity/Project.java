@@ -8,7 +8,6 @@ public class Project {
     private String id;
     private String title;
     private String description;
-    private String image;
     private String category;
     private String tags;
     private Timestamp createdAt;

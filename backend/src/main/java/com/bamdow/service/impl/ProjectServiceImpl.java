@@ -1,16 +1,10 @@
 package com.bamdow.service.impl;
 
-import com.bamdow.mapper.DevelopmentProjectMapper;
-import com.bamdow.mapper.OtherProjectMapper;
-import com.bamdow.mapper.PhotographyProjectMapper;
-import com.bamdow.mapper.ProjectMapper;
+import com.bamdow.mapper.*;
 import com.bamdow.pojo.dto.PageQuery;
 import com.bamdow.pojo.dto.ProjectCreateDTO;
 import com.bamdow.pojo.dto.ProjectUpdateDTO;
-import com.bamdow.pojo.entity.DevelopmentProject;
-import com.bamdow.pojo.entity.OtherProject;
-import com.bamdow.pojo.entity.PhotographyProject;
-import com.bamdow.pojo.entity.Project;
+import com.bamdow.pojo.entity.*;
 import com.bamdow.pojo.result.PageResult;
 import com.bamdow.pojo.vo.ProjectDetailVO;
 import com.bamdow.pojo.vo.ProjectListVO;
@@ -45,6 +39,9 @@ public class ProjectServiceImpl implements ProjectService {
     @Autowired
     private OtherProjectMapper otherProjectMapper;
 
+    @Autowired
+    private ProjectImageMapper projectImageMapper;
+
     @Transactional
     @Override
     public void save(ProjectCreateDTO projectCreateDTO) {
@@ -56,12 +53,6 @@ public class ProjectServiceImpl implements ProjectService {
         BeanUtils.copyProperties(projectCreateDTO, project);
         project.setId(id);
 
-        // 处理图片URL：如果有多张图片，将其转换为逗号分隔的字符串
-        if (projectCreateDTO.getImages() != null && !projectCreateDTO.getImages().isEmpty()) {
-            String imageUrls = String.join(",", projectCreateDTO.getImages());
-            project.setImage(imageUrls);
-        }
-        
         // 处理标签：将标签数组转换为逗号分隔的字符串
         if (projectCreateDTO.getTags() != null && !projectCreateDTO.getTags().isEmpty()) {
             String tagsString = String.join(",", projectCreateDTO.getTags());
@@ -69,6 +60,18 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         projectMapper.insert(project);
+
+        // 保存图片到project_images表
+        if (projectCreateDTO.getImages() != null && !projectCreateDTO.getImages().isEmpty()) {
+            for (int i = 0; i < projectCreateDTO.getImages().size(); i++) {
+                ProjectImage projectImage = new ProjectImage();
+                projectImage.setId(UUID.randomUUID().toString());
+                projectImage.setProjectId(id);
+                projectImage.setImageUrl(projectCreateDTO.getImages().get(i));
+                projectImage.setSortOrder(i);
+                projectImageMapper.insert(projectImage);
+            }
+        }
 
         // 根据分类保存到对应子表
         String category = projectCreateDTO.getCategory();
@@ -105,7 +108,7 @@ public class ProjectServiceImpl implements ProjectService {
         // 3. 逐个转换为前端需要的 ProjectListVO，并处理字段
         List<ProjectListVO> projectListVOs = queryPage.stream().map(queryVO -> {
             ProjectListVO vo = new ProjectListVO();
-            // 复制基础字段（id/title/description/image/category）
+            // 复制基础字段（id/title/description/category）
             BeanUtils.copyProperties(queryVO, vo);
 
             // 处理双语标题
@@ -117,6 +120,15 @@ public class ProjectServiceImpl implements ProjectService {
             // 处理tags：字符串转List<String>
             if (queryVO.getTags() != null && !queryVO.getTags().isEmpty()) {
                 vo.setTags(Arrays.asList(queryVO.getTags().split(",")));
+            }
+
+            // 查询项目图片列表
+            List<ProjectImage> projectImages = projectImageMapper.getByProjectId(queryVO.getId());
+            if (projectImages != null && !projectImages.isEmpty()) {
+                List<String> imageUrls = projectImages.stream()
+                        .map(ProjectImage::getImageUrl)
+                        .collect(Collectors.toList());
+                vo.setImages(imageUrls);
             }
 
             return vo;
@@ -143,6 +155,15 @@ public class ProjectServiceImpl implements ProjectService {
         // 处理tags字段：将逗号分隔的字符串转换为数组
         if (project.getTags() != null && !project.getTags().isEmpty()) {
             projectDetailVO.setTags(Arrays.asList(project.getTags().split(",")));
+        }
+        
+        // 查询项目图片列表
+        List<ProjectImage> projectImages = projectImageMapper.getByProjectId(id);
+        if (projectImages != null && !projectImages.isEmpty()) {
+            List<String> imageUrls = projectImages.stream()
+                    .map(ProjectImage::getImageUrl)
+                    .collect(Collectors.toList());
+            projectDetailVO.setImages(imageUrls);
         }
         
         //根据得到的分类查询子表数据
@@ -176,6 +197,21 @@ public class ProjectServiceImpl implements ProjectService {
             project.setTags(tagsString);
         }
         projectMapper.update(project);
+        
+        // 更新项目图片：先删除旧图片，再添加新图片
+        projectImageMapper.deleteByProjectId(id);
+        List<String> imageUrls=Arrays.asList(projectUpdateDTO.getImage().split(","));
+        if (imageUrls != null && !imageUrls.isEmpty()) {
+            for (int i = 0; i < imageUrls.size(); i++) {
+                ProjectImage projectImage = new ProjectImage();
+                projectImage.setId(UUID.randomUUID().toString());
+                projectImage.setProjectId(id);
+                projectImage.setImageUrl(imageUrls.get(i));
+                projectImage.setSortOrder(i);
+                projectImageMapper.insert(projectImage);
+            }
+        }
+        
         //更新副表数据
         String category = project.getCategory();
         if ("Photography".equals(category)) {

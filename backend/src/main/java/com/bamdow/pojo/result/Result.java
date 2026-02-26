@@ -8,13 +8,13 @@ public class Result<T> {
     private int code;
     private String message;
     private T data;
-    private long timestamp;
+//    private long timestamp;
 
     private Result(int code, String message, T data) {
         this.code = code;
         this.message = message;
         this.data = data;
-        this.timestamp = new Date().getTime();
+//        this.timestamp = new Date().getTime();
     }
 
     // 成功响应

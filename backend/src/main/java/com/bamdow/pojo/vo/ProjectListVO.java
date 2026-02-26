@@ -7,9 +7,11 @@ public class ProjectListVO {
     private String id;
     private String title;
     private String description;
-    private String image;
     private String category;
     private List<String> tags;
+
+    // 图片URL列表
+    private List<String> images;
 
     //  bilingual title for frontend
     private BilingualTitle bilingualTitle;

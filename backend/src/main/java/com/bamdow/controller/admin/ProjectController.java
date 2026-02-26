@@ -47,4 +47,7 @@ public class ProjectController {
         projectService.update(projectUpdateDTO);
         return Result.success();
     }
+
+
+//    public Result delete(@PathVariable String id) {}
 }

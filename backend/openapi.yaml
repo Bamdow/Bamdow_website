@@ -213,9 +213,6 @@ components:
         description:
           type: string
           description: 项目描述
-        image:
-          type: string
-          description: 项目图片URL，多个URL用逗号分隔（兼容旧版本）
         images:
           type: array
           items:
@@ -259,9 +256,11 @@ components:
         description:
           type: string
           description: 项目描述
-        image:
-          type: string
-          description: 项目图片URL，多个URL用逗号分隔
+        images:
+          type: array
+          items:
+            type: string
+          description: 项目图片URL列表（支持多张图片）
         tags:
           type: array
           items:
@@ -297,9 +296,11 @@ components:
         description:
           type: string
           description: 项目描述
-        image:
-          type: string
-          description: 项目图片URL，多个URL用逗号分隔
+        images:
+          type: array
+          items:
+            type: string
+          description: 项目图片URL列表
         category:
           type: string
           description: 项目分类
@@ -322,9 +323,11 @@ components:
         description:
           type: string
           description: 项目描述
-        image:
-          type: string
-          description: 项目图片URL，多个URL用逗号分隔
+        images:
+          type: array
+          items:
+            type: string
+          description: 项目图片URL列表
         category:
           type: string
           description: 项目分类
