@@ -551,7 +551,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
           {currentProjectsPage.map((project) => (
           <div 
             key={project.id} 
-            className={`group relative cursor-pointer flex flex-col h-full transform-gpu ${project.category === Category.DEV ? 'bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 hover:shadow-xl hover:-translate-y-2 transition-all duration-300' : ''}`}
+            className="group relative cursor-pointer flex flex-col h-full transform-gpu"
             onClick={() => {
               if (editMode) {
                 // Toggle selection
@@ -583,7 +583,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
             {/* Selection Circle - Only show in edit mode */}
             {editMode && (
               <button
-                className={`absolute top-4 right-4 z-10 p-2 rounded-full transition-all duration-300 ${project.category === Category.DEV ? 'bg-white dark:bg-black' : 'bg-white dark:bg-gray-900'} shadow-md`}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full transition-all duration-300 bg-white dark:bg-gray-900 shadow-md"
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent triggering card click
                   // Toggle selection
@@ -600,365 +600,233 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
               </button>
             )}
 
-            
-            {project.category === Category.DEV ? (
-               // DEV CARD LAYOUT
-               <div className="flex flex-col h-full">
-                  <div 
-                    className="mb-6 w-16 h-16 bg-white dark:bg-black rounded-2xl shadow-sm flex items-center justify-center text-black dark:text-white cursor-pointer hover:scale-105 transition-transform duration-300"
-                    onClick={(e) => {
-                      if (editMode) {
-                        e.stopPropagation(); // Prevent triggering card click only in edit mode
-                        // 发送API请求获取项目详情
-                        const fetchProjectDetail = async () => {
-                          try {
-                            const projectDetail = await ApiService.getProjectById(project.id, language);
-                            if (projectDetail) {
-                              // 将项目详情填充到编辑表单状态中
+            {/* STANDARD CARD LAYOUT - Unified for all categories */}
+            <>
+              {/* Image container */}
+              <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 mb-6 overflow-hidden rounded-2xl relative shadow-none border border-transparent transition-all duration-500 group-hover:shadow-2xl dark:group-hover:shadow-none dark:group-hover:border-white/20 transform-gpu">
+                {project.image && !project.image.includes('picsum') ? (
+                    <img 
+                      src={project.image.includes(',') ? project.image.split(',')[0].trim() : project.image.trim()} 
+                      alt={project.title} 
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 will-change-transform cursor-pointer"
+                      onClick={(e) => {
+                        if (editMode) {
+                          e.stopPropagation(); // Prevent triggering card click only in edit mode
+                          // 发送API请求获取项目详情
+                          const fetchProjectDetail = async () => {
+                            try {
+                              const projectDetail = await ApiService.getProjectById(project.id, language);
+                              if (projectDetail) {
+                                // 将项目详情填充到编辑表单状态中
+                                setEditFormData({
+                                  id: projectDetail.id,
+                                  title: projectDetail.title,
+                                  description: projectDetail.description,
+                                  images: projectDetail.gallery || [],
+                                  tags: projectDetail.tags || [],
+                                  thoughts: projectDetail.thoughts || '',
+                                  additionalInfo: projectDetail.additionalInfo || '',
+                                  githubUrl: projectDetail.githubUrl || '',
+                                  readme: projectDetail.readme || '',
+                                  externalLink: projectDetail.externalLink || '',
+                                  introduction: projectDetail.introduction || '',
+                                  category: projectDetail.category
+                                });
+                                setShowEditModal(true);
+                              }
+                            } catch (error) {
+                              console.error('Error fetching project detail:', error);
+                              // 出错时使用当前项目数据
                               setEditFormData({
-                                id: projectDetail.id,
-                                title: projectDetail.title,
-                                description: projectDetail.description,
-                                images: projectDetail.gallery || [],
-                                tags: projectDetail.tags || [],
-                                thoughts: projectDetail.thoughts || '',
-                                additionalInfo: projectDetail.additionalInfo || '',
-                                githubUrl: projectDetail.githubUrl || '',
-                                readme: projectDetail.readme || '',
-                                externalLink: projectDetail.externalLink || '',
-                                introduction: projectDetail.introduction || '',
-                                category: projectDetail.category
+                                id: project.id,
+                                title: project.title,
+                                description: project.description,
+                                images: project.gallery || [],
+                                tags: project.tags || [],
+                                thoughts: project.thoughts || '',
+                                additionalInfo: project.additionalInfo || '',
+                                githubUrl: project.githubUrl || '',
+                                readme: project.readme || '',
+                                externalLink: project.externalLink || '',
+                                introduction: project.introduction || '',
+                                category: project.category
                               });
                               setShowEditModal(true);
                             }
-                          } catch (error) {
-                            console.error('Error fetching project detail:', error);
-                            // 出错时使用当前项目数据
-                            setEditFormData({
-                              id: project.id,
-                              title: project.title,
-                              description: project.description,
-                              images: project.gallery || [],
-                              tags: project.tags || [],
-                              thoughts: project.thoughts || '',
-                              additionalInfo: project.additionalInfo || '',
-                              githubUrl: project.githubUrl || '',
-                              readme: project.readme || '',
-                              externalLink: project.externalLink || '',
-                              introduction: project.introduction || '',
-                              category: project.category
-                            });
-                            setShowEditModal(true);
-                          }
-                        };
-                        fetchProjectDetail();
-                      }
-                      // In non-edit mode, allow event to bubble up to card
-                    }}
-                  >
-                    {project.icon === 'message-circle' && <MessageCircle size={32} />}
-                    {project.icon === 'id-card' && <IdCard size={32} />}
-                    {project.icon === 'file-text' && <FileText size={32} />}
-                    {project.icon === 'film' && <Film size={32} />}
-                    {!project.icon && <Terminal size={32} />}
-                  </div>
-                  <div 
-                    className="flex flex-col h-full"
-                    onClick={(e) => {
-                      if (editMode) {
-                        e.stopPropagation(); // Prevent triggering card click only in edit mode
-                        // 发送API请求获取项目详情
-                        const fetchProjectDetail = async () => {
-                          try {
-                            const projectDetail = await ApiService.getProjectById(project.id, language);
-                            if (projectDetail) {
-                              // 将项目详情填充到编辑表单状态中
+                          };
+                          fetchProjectDetail();
+                        }
+                        // In non-edit mode, allow event to bubble up to card
+                      }}
+                    />
+                ) : project.bilibiliId ? (
+                    <div 
+                      className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors duration-300 cursor-pointer"
+                      onClick={(e) => {
+                        if (editMode) {
+                          e.stopPropagation(); // Prevent triggering card click only in edit mode
+                          // 发送API请求获取项目详情
+                          const fetchProjectDetail = async () => {
+                            try {
+                              const projectDetail = await ApiService.getProjectById(project.id, language);
+                              if (projectDetail) {
+                                // 将项目详情填充到编辑表单状态中
+                                setEditFormData({
+                                  id: projectDetail.id,
+                                  title: projectDetail.title,
+                                  description: projectDetail.description,
+                                  images: projectDetail.gallery || [],
+                                  tags: projectDetail.tags || [],
+                                  thoughts: projectDetail.thoughts || '',
+                                  additionalInfo: projectDetail.additionalInfo || '',
+                                  githubUrl: projectDetail.githubUrl || '',
+                                  readme: projectDetail.readme || '',
+                                  externalLink: projectDetail.externalLink || '',
+                                  introduction: projectDetail.introduction || '',
+                                  category: projectDetail.category
+                                });
+                                setShowEditModal(true);
+                              }
+                            } catch (error) {
+                              console.error('Error fetching project detail:', error);
+                              // 出错时使用当前项目数据
                               setEditFormData({
-                                id: projectDetail.id,
-                                title: projectDetail.title,
-                                description: projectDetail.description,
-                                images: projectDetail.gallery || [],
-                                tags: projectDetail.tags || [],
-                                thoughts: projectDetail.thoughts || '',
-                                additionalInfo: projectDetail.additionalInfo || '',
-                                githubUrl: projectDetail.githubUrl || '',
-                                readme: projectDetail.readme || '',
-                                externalLink: projectDetail.externalLink || '',
-                                introduction: projectDetail.introduction || '',
-                                category: projectDetail.category
+                                id: project.id,
+                                title: project.title,
+                                description: project.description,
+                                images: project.gallery || [],
+                                tags: project.tags || [],
+                                thoughts: project.thoughts || '',
+                                additionalInfo: project.additionalInfo || '',
+                                githubUrl: project.githubUrl || '',
+                                readme: project.readme || '',
+                                externalLink: project.externalLink || '',
+                                introduction: project.introduction || '',
+                                category: project.category
                               });
                               setShowEditModal(true);
                             }
-                          } catch (error) {
-                            console.error('Error fetching project detail:', error);
-                            // 出错时使用当前项目数据
-                            setEditFormData({
-                              id: project.id,
-                              title: project.title,
-                              description: project.description,
-                              images: project.gallery || [],
-                              tags: project.tags || [],
-                              thoughts: project.thoughts || '',
-                              additionalInfo: project.additionalInfo || '',
-                              githubUrl: project.githubUrl || '',
-                              readme: project.readme || '',
-                              externalLink: project.externalLink || '',
-                              introduction: project.introduction || '',
-                              category: project.category
-                            });
-                            setShowEditModal(true);
-                          }
-                        };
-                        fetchProjectDetail();
-                      }
-                      // In non-edit mode, allow event to bubble up to card
-                    }}
-                  >
-                    <h3 className="text-2xl font-black text-black dark:text-white mb-3">
+                          };
+                          fetchProjectDetail();
+                        }
+                        // In non-edit mode, allow event to bubble up to card
+                      }}
+                    >
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-[#FF6699] text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+                               <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 ml-1"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                            <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Video Preview</span>
+                        </div>
+                    </div>
+                ) : (
+                    <div 
+                      className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-800 p-8 text-center cursor-pointer"
+                      onClick={(e) => {
+                        if (editMode) {
+                          e.stopPropagation(); // Prevent triggering card click only in edit mode
+                          // 发送API请求获取项目详情
+                          const fetchProjectDetail = async () => {
+                            try {
+                              const projectDetail = await ApiService.getProjectById(project.id, language);
+                              if (projectDetail) {
+                                // 将项目详情填充到编辑表单状态中
+                                setEditFormData({
+                                  id: projectDetail.id,
+                                  title: projectDetail.title,
+                                  description: projectDetail.description,
+                                  images: projectDetail.gallery || [],
+                                  tags: projectDetail.tags || [],
+                                  thoughts: projectDetail.thoughts || '',
+                                  additionalInfo: projectDetail.additionalInfo || '',
+                                  githubUrl: projectDetail.githubUrl || '',
+                                  readme: projectDetail.readme || '',
+                                  externalLink: projectDetail.externalLink || '',
+                                  introduction: projectDetail.introduction || '',
+                                  category: projectDetail.category
+                                });
+                                setShowEditModal(true);
+                              }
+                            } catch (error) {
+                              console.error('Error fetching project detail:', error);
+                              // 出错时使用当前项目数据
+                              setEditFormData({
+                                id: project.id,
+                                title: project.title,
+                                description: project.description,
+                                images: project.gallery || [],
+                                tags: project.tags || [],
+                                thoughts: project.thoughts || '',
+                                additionalInfo: project.additionalInfo || '',
+                                githubUrl: project.githubUrl || '',
+                                readme: project.readme || '',
+                                externalLink: project.externalLink || '',
+                                introduction: project.introduction || '',
+                                category: project.category
+                              });
+                              setShowEditModal(true);
+                            }
+                          };
+                          fetchProjectDetail();
+                        }
+                        // In non-edit mode, allow event to bubble up to card
+                      }}
+                    >
+                        <div>
+                            <h4 className={`${filter === 'All' ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'} font-black text-gray-400 dark:text-gray-600 mb-2 leading-tight`}>
+                                {project.title}<br/>
+                                {project.subtitle && <span className="text-lg md:text-xl font-normal opacity-70">{project.subtitle}</span>}
+                            </h4>
+                            <p className="text-xs font-mono text-gray-400 mt-4 uppercase tracking-widest border border-gray-300 dark:border-gray-700 rounded-full px-3 py-1 inline-block">
+                                {language === 'zh' ? '预览部署中...' : 'Preview Deploying...'}
+                            </p>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="absolute top-4 left-4 md:top-6 md:left-6 bg-white dark:bg-black dark:text-white px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-bold uppercase tracking-wider rounded-lg shadow-sm border border-transparent dark:border-white/10">
+                  {CATEGORY_LABELS[language][project.category] || project.category}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="flex justify-between items-start border-b-2 border-gray-100 dark:border-gray-800 pb-6 group-hover:border-black dark:group-hover:border-white transition-colors duration-300 mt-auto">
+                <div className="pr-4 md:pr-8">
+                    <h3 className={`${filter === 'All' ? 'text-xl md:text-2xl' : 'text-2xl md:text-4xl'} font-black text-black dark:text-white mb-2 md:mb-3 group-hover:text-gray-800 dark:group-hover:text-gray-200 leading-tight transition-colors`}>
                       {project.title}
                     </h3>
-                    <p className="text-gray-500 dark:text-gray-400 text-base leading-relaxed line-clamp-3 mb-6">
-                      {project.description}
-                    </p>
-                    <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-800 w-full flex justify-between items-center">
-                       <span className="text-xs font-bold font-mono text-gray-400 uppercase tracking-wider">
-                          {project.subtitle}
-                       </span>
-                       <div className="bg-black dark:bg-white text-white dark:text-black p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                          <ArrowUpRight size={18} />
-                       </div>
-                    </div>
-                  </div>
-               </div>
-            ) : (
-               // STANDARD CARD LAYOUT
-               <>
-                  {/* Image container */}
-                  <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 mb-6 overflow-hidden rounded-2xl relative shadow-none border border-transparent transition-all duration-500 group-hover:shadow-2xl dark:group-hover:shadow-none dark:group-hover:border-white/20 transform-gpu">
-                    {project.image && !project.image.includes('picsum') ? (
-                        <img 
-                          src={project.image.includes(',') ? project.image.split(',')[0].trim() : project.image.trim()} 
-                          alt={project.title} 
-                          loading="lazy"
-                          decoding="async"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 will-change-transform cursor-pointer"
-                          onClick={(e) => {
-                            if (editMode) {
-                              e.stopPropagation(); // Prevent triggering card click only in edit mode
-                              // 发送API请求获取项目详情
-                              const fetchProjectDetail = async () => {
-                                try {
-                                  const projectDetail = await ApiService.getProjectById(project.id, language);
-                                  if (projectDetail) {
-                                    // 将项目详情填充到编辑表单状态中
-                                    setEditFormData({
-                                      id: projectDetail.id,
-                                      title: projectDetail.title,
-                                      description: projectDetail.description,
-                                      images: projectDetail.gallery || [],
-                                      tags: projectDetail.tags || [],
-                                      thoughts: projectDetail.thoughts || '',
-                                      additionalInfo: projectDetail.additionalInfo || '',
-                                      githubUrl: projectDetail.githubUrl || '',
-                                      readme: projectDetail.readme || '',
-                                      externalLink: projectDetail.externalLink || '',
-                                      introduction: projectDetail.introduction || '',
-                                      category: projectDetail.category
-                                    });
-                                    setShowEditModal(true);
-                                  }
-                                } catch (error) {
-                                  console.error('Error fetching project detail:', error);
-                                  // 出错时使用当前项目数据
-                                  setEditFormData({
-                                    id: project.id,
-                                    title: project.title,
-                                    description: project.description,
-                                    images: project.gallery || [],
-                                    tags: project.tags || [],
-                                    thoughts: project.thoughts || '',
-                                    additionalInfo: project.additionalInfo || '',
-                                    githubUrl: project.githubUrl || '',
-                                    readme: project.readme || '',
-                                    externalLink: project.externalLink || '',
-                                    introduction: project.introduction || '',
-                                    category: project.category
-                                  });
-                                  setShowEditModal(true);
-                                }
-                              };
-                              fetchProjectDetail();
-                            }
-                            // In non-edit mode, allow event to bubble up to card
-                          }}
-                        />
-                    ) : project.bilibiliId ? (
-                        <div 
-                          className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors duration-300 cursor-pointer"
-                          onClick={(e) => {
-                            if (editMode) {
-                              e.stopPropagation(); // Prevent triggering card click only in edit mode
-                              // 发送API请求获取项目详情
-                              const fetchProjectDetail = async () => {
-                                try {
-                                  const projectDetail = await ApiService.getProjectById(project.id, language);
-                                  if (projectDetail) {
-                                    // 将项目详情填充到编辑表单状态中
-                                    setEditFormData({
-                                      id: projectDetail.id,
-                                      title: projectDetail.title,
-                                      description: projectDetail.description,
-                                      images: projectDetail.gallery || [],
-                                      tags: projectDetail.tags || [],
-                                      thoughts: projectDetail.thoughts || '',
-                                      additionalInfo: projectDetail.additionalInfo || '',
-                                      githubUrl: projectDetail.githubUrl || '',
-                                      readme: projectDetail.readme || '',
-                                      externalLink: projectDetail.externalLink || '',
-                                      introduction: projectDetail.introduction || '',
-                                      category: projectDetail.category
-                                    });
-                                    setShowEditModal(true);
-                                  }
-                                } catch (error) {
-                                  console.error('Error fetching project detail:', error);
-                                  // 出错时使用当前项目数据
-                                  setEditFormData({
-                                    id: project.id,
-                                    title: project.title,
-                                    description: project.description,
-                                    images: project.gallery || [],
-                                    tags: project.tags || [],
-                                    thoughts: project.thoughts || '',
-                                    additionalInfo: project.additionalInfo || '',
-                                    githubUrl: project.githubUrl || '',
-                                    readme: project.readme || '',
-                                    externalLink: project.externalLink || '',
-                                    introduction: project.introduction || '',
-                                    category: project.category
-                                  });
-                                  setShowEditModal(true);
-                                }
-                              };
-                              fetchProjectDetail();
-                            }
-                            // In non-edit mode, allow event to bubble up to card
-                          }}
-                        >
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="w-16 h-16 rounded-full bg-[#FF6699] text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
-                                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 ml-1"><path d="M8 5v14l11-7z"/></svg>
-                                </div>
-                                <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Video Preview</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div 
-                          className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-800 p-8 text-center cursor-pointer"
-                          onClick={(e) => {
-                            if (editMode) {
-                              e.stopPropagation(); // Prevent triggering card click only in edit mode
-                              // 发送API请求获取项目详情
-                              const fetchProjectDetail = async () => {
-                                try {
-                                  const projectDetail = await ApiService.getProjectById(project.id, language);
-                                  if (projectDetail) {
-                                    // 将项目详情填充到编辑表单状态中
-                                    setEditFormData({
-                                      id: projectDetail.id,
-                                      title: projectDetail.title,
-                                      description: projectDetail.description,
-                                      images: projectDetail.gallery || [],
-                                      tags: projectDetail.tags || [],
-                                      thoughts: projectDetail.thoughts || '',
-                                      additionalInfo: projectDetail.additionalInfo || '',
-                                      githubUrl: projectDetail.githubUrl || '',
-                                      readme: projectDetail.readme || '',
-                                      externalLink: projectDetail.externalLink || '',
-                                      introduction: projectDetail.introduction || '',
-                                      category: projectDetail.category
-                                    });
-                                    setShowEditModal(true);
-                                  }
-                                } catch (error) {
-                                  console.error('Error fetching project detail:', error);
-                                  // 出错时使用当前项目数据
-                                  setEditFormData({
-                                    id: project.id,
-                                    title: project.title,
-                                    description: project.description,
-                                    images: project.gallery || [],
-                                    tags: project.tags || [],
-                                    thoughts: project.thoughts || '',
-                                    additionalInfo: project.additionalInfo || '',
-                                    githubUrl: project.githubUrl || '',
-                                    readme: project.readme || '',
-                                    externalLink: project.externalLink || '',
-                                    introduction: project.introduction || '',
-                                    category: project.category
-                                  });
-                                  setShowEditModal(true);
-                                }
-                              };
-                              fetchProjectDetail();
-                            }
-                            // In non-edit mode, allow event to bubble up to card
-                          }}
-                        >
-                            <div>
-                                <h4 className={`${filter === 'All' ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'} font-black text-gray-400 dark:text-gray-600 mb-2 leading-tight`}>
-                                    {project.title}<br/>
-                                    {project.subtitle && <span className="text-lg md:text-xl font-normal opacity-70">{project.subtitle}</span>}
-                                </h4>
-                                <p className="text-xs font-mono text-gray-400 mt-4 uppercase tracking-widest border border-gray-300 dark:border-gray-700 rounded-full px-3 py-1 inline-block">
-                                    {language === 'zh' ? '预览部署中...' : 'Preview Deploying...'}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                    
-                    <div className="absolute top-4 left-4 md:top-6 md:left-6 bg-white dark:bg-black dark:text-white px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-bold uppercase tracking-wider rounded-lg shadow-sm border border-transparent dark:border-white/10">
-                      {CATEGORY_LABELS[language][project.category] || project.category}
-                    </div>
-                  </div>
+                  <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed font-medium transition-colors">
+                    {project.description}
+                  </p>
+                </div>
+              </div>
 
-                  {/* Content */}
-                  <div className="flex justify-between items-start border-b-2 border-gray-100 dark:border-gray-800 pb-6 group-hover:border-black dark:group-hover:border-white transition-colors duration-300 mt-auto">
-                    <div className="pr-4 md:pr-8">
-                        <h3 className={`${filter === 'All' ? 'text-xl md:text-2xl' : 'text-2xl md:text-4xl'} font-black text-black dark:text-white mb-2 md:mb-3 group-hover:text-gray-800 dark:group-hover:text-gray-200 leading-tight transition-colors`}>
-                          {project.title}
-                        </h3>
-                      <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed font-medium transition-colors">
-                        {project.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Tags */}
-                  {project.category !== Category.PHOTO && project.tags && project.tags.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2 md:gap-3">
-                       {project.tags.map((tag, index) => (
-                         <span key={index} className="text-[10px] md:text-xs font-bold font-mono text-gray-400 dark:text-gray-500 uppercase tracking-wider border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md">#{tag}</span>
-                       ))}
-                    </div>
-                  )}
-                  
-                  {/* External Link for Other category */}
-                  {project.category === Category.OTHER && project.externalLink && (
-                    <div className="mt-4">
-                      <a 
-                        href={project.externalLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-[10px] md:text-xs font-bold font-mono text-blue-500 dark:text-blue-400 uppercase tracking-wider border border-blue-200 dark:border-blue-800 px-2 py-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                      >
-                        ↗ {language === 'zh' ? '访问链接' : 'Visit Link'}
-                      </a>
-                    </div>
-                  )}
-               </>
-            )}
+              {/* Tags */}
+              {project.tags && project.tags.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2 md:gap-3">
+                   {project.tags.map((tag, index) => (
+                     <span key={index} className="text-[10px] md:text-xs font-bold font-mono text-gray-400 dark:text-gray-500 uppercase tracking-wider border border-gray-200 dark:border-gray-800 px-2 py-1 rounded-md">#{tag}</span>
+                   ))}
+                </div>
+              )}
+              
+              {/* External Link */}
+              {project.externalLink && (
+                <div className="mt-4">
+                  <a 
+                    href={project.externalLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[10px] md:text-xs font-bold font-mono text-blue-500 dark:text-blue-400 uppercase tracking-wider border border-blue-200 dark:border-blue-800 px-2 py-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                  >
+                    ↗ {language === 'zh' ? '访问链接' : 'Visit Link'}
+                  </a>
+                </div>
+              )}
+            </>
 
           </div>
         ))}

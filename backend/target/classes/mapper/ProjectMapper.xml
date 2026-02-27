@@ -39,6 +39,11 @@
             tags
         FROM
             projects
+        <where>
+            <if test="category != null and category != 'All'">
+                AND category = #{category}
+            </if>
+        </where>
         ORDER BY
             created_at
     </select>
