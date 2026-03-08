@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.bamdow.mapper.MarkdownMapper">
+    <insert id="insert">
+        INSERT INTO bamdow_web.markdown_files (id, file_name, oss_url)
+        VALUES (#{id},
+                #{fileName},
+                #{ossUrl}
+               )
+    </insert>
+    <select id="pageQuery" resultType="com.bamdow.pojo.entity.MarkdownFile">
+        SELECT
+            id, file_name, oss_url
+        FROM
+            markdown_files
+        order by
+            created_at
+    </select>
+
+</mapper>

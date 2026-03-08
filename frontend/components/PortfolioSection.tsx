@@ -148,7 +148,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
   
   const categories = ['All', ...availableCategories];
 
-  const filteredProjects = projects;
+  const filteredProjects = filter === 'All' ? projects : projects.filter(project => project.category === filter);
 
   // Pagination logic
   const totalProjects = filteredProjects.length;

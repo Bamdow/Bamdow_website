@@ -23,7 +23,7 @@ public class AliyunOssUtil {
     @Resource
     private OSS ossClient;
 
-    //上传图片到OSS
+    //上传文件到OSS
     public String upload(byte[] bytes, String objectName) {
         try {
             // 创建PutObjectRequest对象。

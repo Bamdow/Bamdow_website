@@ -19,7 +19,7 @@
             #{tags}
         )
     </insert>
-    <update id="update" parameterType="com.bamdow.pojo.entity.Project">
+    <update id="update">
         update projects
         set
             title = #{title},

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ARTICLE_LABELS } from '../constants';
 import { ArticleCategory, Language, Article } from '../types';
-import { Calendar, Filter, Edit, Plus, Trash2, X, BookOpen } from 'lucide-react';
+import { Calendar, Filter, Edit, Plus, Trash2, X, BookOpen, Upload, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { markdownApi } from '../src/services/markdownApi';
+import Markdown from 'react-markdown';
 
 // Example article data with Markdown content
 const EXAMPLE_ARTICLES: Article[] = [
@@ -63,17 +64,131 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
   // Edit Mode State
   const [editMode, setEditMode] = useState(false);
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
+  
+  // Add Article Modal State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [markdownFile, setMarkdownFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalArticles, setTotalArticles] = useState(0);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const categories = ['All'];
-  const currentArticles = EXAMPLE_ARTICLES;
 
-  const filteredAndSortedArticles = currentArticles
+  // Fetch articles from backend when page or page size changes
+  useEffect(() => {
+    fetchArticles();
+  }, [currentPage, pageSize]);
+
+  const filteredAndSortedArticles = articles
     .filter(a => filter === 'All' || a.category === filter)
     .sort((a, b) => {
       const dateA = new Date(a.date || '').getTime();
       const dateB = new Date(b.date || '').getTime();
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
+
+  // Handle Markdown file selection
+  const handleMarkdownFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setMarkdownFile(file);
+    }
+  };
+
+  // Handle image file selection and preview
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files);
+      setImageFiles(prev => [...prev, ...newFiles]);
+      
+      // Generate previews for new images
+      const newPreviews: string[] = [];
+      newFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setImagePreviews(prev => [...prev, event.target.result as string]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+
+
+  // Fetch articles from backend
+  const fetchArticles = async () => {
+    setLoading(true);
+    try {
+      const response = await markdownApi.getMarkdownFiles(currentPage, pageSize);
+      setTotalArticles(response.total);
+      
+      // Convert MarkdownFile to Article format
+      const convertedArticles: Article[] = response.records.map((file) => ({
+        id: file.id,
+        title: file.fileName.replace(/\.md$/i, ''), // 去掉.md后缀，不区分大小写
+        category: ArticleCategory.DIT,
+        link: file.ossurl,
+        coverImage: '',
+        date: new Date().toISOString().split('T')[0],
+        content: ''
+      }));
+      
+      setArticles(convertedArticles);
+    } catch (error) {
+      console.error('Failed to fetch articles:', error);
+      // Fallback to example articles if API fails
+      setArticles(EXAMPLE_ARTICLES);
+      setTotalArticles(EXAMPLE_ARTICLES.length);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    if (!markdownFile) {
+      alert(language === 'zh' ? '请选择Markdown文件' : 'Please select a Markdown file');
+      return;
+    }
+
+    try {
+      // Upload markdown file and images together
+      const markdownUrl = await markdownApi.uploadMarkdown(markdownFile, imageFiles);
+      
+      console.log('Markdown file uploaded successfully:', markdownUrl);
+      
+      // Close modal and reset state
+      handleCloseAddModal();
+      
+      // Refresh the article list
+      setCurrentPage(1); // Reset to first page to see the new article
+      
+      // Wait a short time to ensure backend has processed the upload
+      setTimeout(() => {
+        fetchArticles();
+      }, 500);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert(language === 'zh' ? '上传失败，请重试' : 'Upload failed, please try again');
+    }
+  };
+
+  // Handle close modal
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
+    setMarkdownFile(null);
+    setImageFiles([]);
+    setImagePreviews([]);
+  };
 
   return (
     <div className="w-full max-w-[98vw] mx-auto pb-20">
@@ -172,7 +287,7 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                </button>
                
                {/* Add Button */}
-               <label
+               <button
                  className={`p-2 rounded-full transition-colors duration-300 cursor-pointer ${
                    editMode 
                      ? 'bg-gray-100 dark:bg-gray-800 text-black dark:text-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black'
@@ -181,39 +296,26 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                  title={editMode 
                    ? (language === 'zh' ? '全选/取消全选' : 'Select All/Deselect All') 
                    : (language === 'zh' ? '新增文章' : 'Add Article')}
+                 onClick={() => {
+                   if (!editMode) {
+                     setShowAddModal(true);
+                   } else {
+                     if (selectedArticles.length === filteredAndSortedArticles.length) {
+                       setSelectedArticles([]);
+                     } else {
+                       setSelectedArticles(filteredAndSortedArticles.map(article => article.id));
+                     }
+                   }
+                 }}
                >
                  {editMode ? (
-                   <button
-                     onClick={() => {
-                       if (selectedArticles.length === filteredAndSortedArticles.length) {
-                         setSelectedArticles([]);
-                       } else {
-                         setSelectedArticles(filteredAndSortedArticles.map(article => article.id));
-                       }
-                     }}
-                   >
-                     <span className="text-sm font-bold flex items-center justify-center w-6 h-6">
-                       {language === 'zh' ? '全' : 'All'}
-                     </span>
-                   </button>
+                   <span className="text-sm font-bold flex items-center justify-center w-6 h-6">
+                     {language === 'zh' ? '全' : 'All'}
+                   </span>
                  ) : (
-                   <>
-                     <Plus size={20} />
-                     <input
-                       type="file"
-                       accept=".md,.markdown"
-                       className="hidden"
-                       onChange={(e) => {
-                         const file = e.target.files?.[0];
-                         if (file) {
-                           console.log('Selected MD file:', file.name);
-                           // 这里可以添加文件读取和处理逻辑
-                         }
-                       }}
-                     />
-                   </>
+                   <Plus size={20} />
                  )}
-               </label>
+               </button>
               
                <button 
                  onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
@@ -241,7 +343,42 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                       }
                     });
                   } else {
-                    setSelectedArticle(article);
+                    // 先设置selectedArticle，显示加载状态
+                    setSelectedArticle({ ...article, content: 'Loading...' });
+                    
+                    // 调用后端接口获取Markdown文件的OSS URL
+                    fetch(`/api/admin/markdown/${article.id}`)
+                      .then(response => {
+                        if (!response.ok) {
+                          throw new Error('Failed to fetch markdown URL');
+                        }
+                        return response.json();
+                      })
+                      .then(data => {
+                        if (data.code === 200 && data.data) {
+                          // 获取OSS URL
+                          const ossUrl = data.data.trim(); // 去除可能的空格和反引号
+                          
+                          // 根据OSS URL下载Markdown文件内容
+                          return fetch(ossUrl)
+                            .then(response => {
+                              if (!response.ok) {
+                                throw new Error('Failed to fetch markdown content');
+                              }
+                              return response.text();
+                            })
+                            .then(content => {
+                              // 更新selectedArticle，添加内容
+                              setSelectedArticle({ ...article, content });
+                            });
+                        } else {
+                          throw new Error('Invalid response from server');
+                        }
+                      })
+                      .catch(error => {
+                        console.error('Error fetching markdown content:', error);
+                        setSelectedArticle({ ...article, content: 'Failed to load content' });
+                      });
                   }
                 }}
               >
@@ -315,6 +452,31 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                 <p className="text-xl font-medium">{language === 'zh' ? '暂无文章' : 'No articles found'}</p>
              </div>
           )}
+
+          {/* Pagination */}
+          <div className="flex justify-center mt-12">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-full border border-gray-300 dark:border-gray-700 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              <span className="text-gray-600 dark:text-gray-400">
+                {language === 'zh' ? `第 ${currentPage} 页，共 ${Math.ceil(totalArticles / pageSize)} 页` : `Page ${currentPage} of ${Math.ceil(totalArticles / pageSize)}`}
+              </span>
+              
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalArticles / pageSize), prev + 1))}
+                disabled={currentPage >= Math.ceil(totalArticles / pageSize)}
+                className="p-2 rounded-full border border-gray-300 dark:border-gray-700 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -360,7 +522,8 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                  {/* Markdown Content */}
                  <div className="prose dark:prose-invert max-w-none">
                    <style>
-                     {`
+                     {
+                       `
                        .prose table {
                          width: 100%;
                          border-collapse: collapse;
@@ -413,13 +576,199 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                        .dark .prose a {
                          color: #64b5f6;
                        }
-                     `}
+                       `
+                     }
                    </style>
-                   <ReactMarkdown>
+                   <Markdown>
                      {selectedArticle.content || ''}
-                   </ReactMarkdown>
+                   </Markdown>
                  </div>
                </div>
+             </div>
+           </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Add Article Modal */}
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
+           {/* Backdrop */}
+           <div 
+             className="absolute inset-0 bg-black/80"
+             onClick={handleCloseAddModal}
+           ></div>
+
+           {/* Modal Content */}
+           <div className="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-white/20 dark:border-white/10 overflow-hidden flex flex-col animate-message-pop">
+             {/* Header */}
+             <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
+               <h3 className="text-2xl font-black text-black dark:text-white">
+                 {language === 'zh' ? '新增文章' : 'Add Article'}
+               </h3>
+               <button 
+                 onClick={handleCloseAddModal}
+                 className="p-2 rounded-full bg-white/50 dark:bg-black/50 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+               >
+                 <X size={24} className="text-black dark:text-white" />
+               </button>
+             </div>
+
+             {/* Inner scroll container */}
+             <div className="flex-1 overflow-y-auto no-scrollbar p-6">
+               {/* Markdown File Upload */}
+               <div className="mb-8">
+                 <label className="block text-lg font-bold text-black dark:text-white mb-3">
+                   {language === 'zh' ? 'Markdown文件' : 'Markdown File'}
+                 </label>
+                 <div 
+                   className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 text-center hover:border-black dark:hover:border-white transition-colors cursor-pointer"
+                   onDragOver={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     e.currentTarget.classList.add('border-black', 'dark:border-white');
+                   }}
+                   onDragEnter={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                   }}
+                   onDragLeave={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     e.currentTarget.classList.remove('border-black', 'dark:border-white');
+                   }}
+                   onDrop={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     e.currentTarget.classList.remove('border-black', 'dark:border-white');
+                     const file = e.dataTransfer.files[0];
+                     if (file && (file.name.endsWith('.md') || file.name.endsWith('.markdown'))) {
+                       setMarkdownFile(file);
+                     }
+                   }}
+                 >
+                   <input
+                     type="file"
+                     accept=".md,.markdown"
+                     className="hidden"
+                     id="markdown-upload"
+                     onChange={handleMarkdownFileChange}
+                   />
+                   <label htmlFor="markdown-upload" className="cursor-pointer">
+                     <Upload size={48} className="mx-auto mb-3 text-gray-400 dark:text-gray-500" />
+                     <p className="text-gray-600 dark:text-gray-400 mb-2">
+                       {language === 'zh' ? '点击或拖拽文件到此处' : 'Click or drag files to this area'}
+                     </p>
+                     <p className="text-xs text-gray-400 dark:text-gray-600">
+                       {language === 'zh' ? '支持 .md, .markdown 格式' : 'Supports .md, .markdown formats'}
+                     </p>
+                     {markdownFile && (
+                       <p className="mt-3 text-sm font-medium text-black dark:text-white">
+                         {markdownFile.name}
+                       </p>
+                     )}
+                   </label>
+                 </div>
+               </div>
+
+               {/* Image Upload */}
+               <div className="mb-8">
+                 <label className="block text-lg font-bold text-black dark:text-white mb-3">
+                   {language === 'zh' ? '图片文件' : 'Image Files'}
+                 </label>
+                 <div 
+                   className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 text-center hover:border-black dark:hover:border-white transition-colors cursor-pointer"
+                   onDragOver={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     e.currentTarget.classList.add('border-black', 'dark:border-white');
+                   }}
+                   onDragEnter={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                   }}
+                   onDragLeave={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     e.currentTarget.classList.remove('border-black', 'dark:border-white');
+                   }}
+                   onDrop={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     e.currentTarget.classList.remove('border-black', 'dark:border-white');
+                     const files = Array.from(e.dataTransfer.files);
+                     const imageFilesOnly = files.filter(file => file.type.startsWith('image/'));
+                     if (imageFilesOnly.length > 0) {
+                       setImageFiles(prev => [...prev, ...imageFilesOnly]);
+                       
+                       // Generate previews for new images
+                       imageFilesOnly.forEach(file => {
+                         const reader = new FileReader();
+                         reader.onload = (event) => {
+                           if (event.target?.result) {
+                             setImagePreviews(prev => [...prev, event.target.result as string]);
+                           }
+                         };
+                         reader.readAsDataURL(file);
+                       });
+                     }
+                   }}
+                 >
+                   <input
+                     type="file"
+                     accept="image/*"
+                     multiple
+                     className="hidden"
+                     id="image-upload"
+                     onChange={handleImageFileChange}
+                   />
+                   <label htmlFor="image-upload" className="cursor-pointer">
+                     <ImageIcon size={48} className="mx-auto mb-3 text-gray-400 dark:text-gray-500" />
+                     <p className="text-gray-600 dark:text-gray-400 mb-2">
+                       {language === 'zh' ? '点击或拖拽文件到此处' : 'Click or drag files to this area'}
+                     </p>
+                     <p className="text-xs text-gray-400 dark:text-gray-600">
+                       {language === 'zh' ? '支持 JPG, PNG, GIF 等图片格式' : 'Supports JPG, PNG, GIF and other image formats'}
+                     </p>
+                     {imageFiles.length > 0 && (
+                       <p className="mt-3 text-sm font-medium text-black dark:text-white">
+                         {language === 'zh' ? `已选择 ${imageFiles.length} 个图片文件` : `Selected ${imageFiles.length} image files`}
+                       </p>
+                     )}
+                   </label>
+                 </div>
+
+                 {/* Image Previews */}
+                 {imagePreviews.length > 0 && (
+                   <div className="mt-4 grid grid-cols-3 gap-4">
+                     {imagePreviews.map((preview, index) => (
+                       <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
+                         <img 
+                           src={preview} 
+                           alt={`Preview ${index + 1}`} 
+                           className="w-full h-full object-cover"
+                         />
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </div>
+             </div>
+
+             {/* Footer */}
+             <div className="p-6 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-4">
+               <button
+                 onClick={handleCloseAddModal}
+                 className="px-6 py-3 rounded-lg border border-gray-300 dark:border-gray-700 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+               >
+                 {language === 'zh' ? '取消' : 'Cancel'}
+               </button>
+               <button
+                 onClick={handleSubmit}
+                 className="px-6 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+               >
+                 {language === 'zh' ? '提交' : 'Submit'}
+               </button>
              </div>
            </div>
         </div>,

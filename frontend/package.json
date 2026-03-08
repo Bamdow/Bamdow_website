@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "lucide-react": "^0.555.0",
+    "markdown-it": "^14.1.1",
+    "markdown-it-attrs": "^4.3.1",
     "matter-js": "^0.20.0",
     "motion": "^12.23.26",
     "react": "^19.2.0",
@@ -24,6 +26,7 @@
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",
+    "unplugin-react-markdown": "^0.1.9",
     "vite": "^6.2.0"
   }
 }
