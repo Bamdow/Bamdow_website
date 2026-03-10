@@ -57,7 +57,6 @@ interface ArticleSectionProps {
 }
 
 export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
-  const [filter, setFilter] = useState<string>('All');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   
@@ -78,15 +77,12 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const categories = ['All'];
-
   // Fetch articles from backend when page or page size changes
   useEffect(() => {
     fetchArticles();
   }, [currentPage, pageSize]);
 
   const filteredAndSortedArticles = articles
-    .filter(a => filter === 'All' || a.category === filter)
     .sort((a, b) => {
       const dateA = new Date(a.date || '').getTime();
       const dateB = new Date(b.date || '').getTime();
@@ -132,15 +128,41 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
       setTotalArticles(response.total);
       
       // Convert MarkdownFile to Article format
-      const convertedArticles: Article[] = response.records.map((file) => ({
-        id: file.id,
-        title: file.fileName.replace(/\.md$/i, ''), // 去掉.md后缀，不区分大小写
-        category: ArticleCategory.DIT,
-        link: file.ossurl,
-        coverImage: '',
-        date: new Date().toISOString().split('T')[0],
-        content: ''
-      }));
+      const convertedArticles: Article[] = await Promise.all(
+        response.records.map(async (file) => {
+          let coverImage = '';
+          
+          try {
+            // Download markdown file content to extract first image
+            const mdUrl = file.ossurl || file.ossUrl || '';
+            if (mdUrl) {
+              const mdResponse = await fetch(mdUrl);
+              if (mdResponse.ok) {
+                const content = await mdResponse.text();
+                // Extract first image URL
+                const imageRegex = /!\[.*?\]\((.*?)\)/;
+                const match = content.match(imageRegex);
+                if (match) {
+                  coverImage = match[1];
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error extracting cover image:', error);
+          }
+          
+          const mdUrl = file.ossurl || file.ossUrl || '';
+          return {
+            id: file.id,
+            title: file.fileName.replace(/\.md$/i, ''), // 去掉.md后缀，不区分大小写
+            category: ArticleCategory.DIT,
+            link: mdUrl,
+            coverImage,
+            date: new Date().toISOString().split('T')[0],
+            content: ''
+          };
+        })
+      );
       
       setArticles(convertedArticles);
     } catch (error) {
@@ -153,6 +175,14 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
     }
   };
 
+  // Extract first image URL from markdown content
+  const extractFirstImageUrl = (content: string): string => {
+    // Regular expression to match markdown image syntax: ![alt](url)
+    const imageRegex = /!\[.*?\]\((.*?)\)/;
+    const match = content.match(imageRegex);
+    return match ? match[1] : '';
+  };
+
   // Handle form submission
   const handleSubmit = async () => {
     if (!markdownFile) {
@@ -161,6 +191,10 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
     }
 
     try {
+      // Read markdown file content to extract first image
+      const reader = new FileReader();
+      reader.readAsText(markdownFile);
+      
       // Upload markdown file and images together
       const markdownUrl = await markdownApi.uploadMarkdown(markdownFile, imageFiles);
       
@@ -193,54 +227,9 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
   return (
     <div className="w-full max-w-[98vw] mx-auto pb-20">
       
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 justify-center">
-        
-        {/* Left Sidebar - Desktop */}
-        <div className="hidden lg:block w-64 flex-shrink-0">
-          <div className="sticky top-32">
-            <h3 className="text-xl font-black mb-8 px-4 flex items-center gap-2">
-              <Filter size={20} />
-              {language === 'zh' ? '分类' : 'Categories'}
-            </h3>
-            <div className="flex flex-col space-y-2">
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setFilter(cat)}
-                  className={`
-                    text-left px-4 py-3 rounded-xl transition-all duration-300 text-lg font-bold
-                    ${filter === cat 
-                      ? 'bg-black text-white dark:bg-white dark:text-black shadow-lg transform scale-105' 
-                      : 'text-gray-400 hover:text-black dark:text-gray-500 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}
-                  `}
-                >
-                  {ARTICLE_LABELS[language][cat] || cat}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Filter Bar (Horizontal) */}
-        <div className="lg:hidden flex overflow-x-auto pb-4 gap-4 no-scrollbar mb-8 sticky top-20 bg-white/95 dark:bg-black/95 backdrop-blur-sm z-30 pt-4">
-           {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setFilter(cat)}
-              className={`
-                whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold border-2 transition-all duration-300
-                ${filter === cat 
-                  ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black' 
-                  : 'border-gray-200 text-gray-400 dark:border-gray-800 dark:text-gray-500'}
-              `}
-            >
-              {ARTICLE_LABELS[language][cat] || cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Right Content Area */}
-        <div className="flex-grow">
+      <div className="flex flex-col items-center">
+        {/* Content Area */}
+        <div className="w-full max-w-5xl">
           
           {/* Sort Controls Panel */}
           <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200 dark:border-gray-800">
@@ -258,10 +247,25 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                        : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                    }`}
                    title={language === 'zh' ? '删除选中文章' : 'Delete Selected Articles'}
-                   onClick={() => {
+                   onClick={async () => {
                      if (selectedArticles.length > 0) {
-                       console.log('Delete selected articles:', selectedArticles);
-                       setSelectedArticles([]);
+                       try {
+                         // 调用删除接口
+                         await markdownApi.deleteMarkdownFiles(selectedArticles);
+                         
+                         // 显示成功提示
+                         alert(language === 'zh' ? '删除成功' : 'Delete success');
+                         
+                         // 清空选中状态
+                         setSelectedArticles([]);
+                         
+                         // 刷新文章列表
+                         fetchArticles();
+                       } catch (error) {
+                         console.error('Delete error:', error);
+                         // 显示失败提示
+                         alert(language === 'zh' ? '删除失败，请重试' : 'Delete failed, please try again');
+                       }
                      }
                    }}
                    disabled={selectedArticles.length === 0}
@@ -401,10 +405,10 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                   </button>
                 )}
                 
-                <div className="flex flex-col md:flex-row bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden p-2 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 items-stretch h-auto">
+                <div className="flex flex-col md:flex-row bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden p-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 items-stretch h-auto">
                     
                     {/* Cover Image Container */}
-                    <div className="w-full md:w-[45%] aspect-[900/383] shrink-0 rounded-xl overflow-hidden relative bg-gray-100 dark:bg-gray-900">
+                    <div className="w-full md:w-[50%] aspect-[21/9] shrink-0 rounded-xl overflow-hidden relative bg-gray-100 dark:bg-gray-900">
                         {article.coverImage ? (
                              <img 
                              src={article.coverImage} 
@@ -419,26 +423,25 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                                  <BookOpen size={32} className="text-gray-300 dark:text-gray-600" />
                             </div>
                         )}
-                        
-                        <div className="absolute top-2 left-2 bg-white/90 dark:bg-black/90 text-black dark:text-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md shadow-sm">
-                          {ARTICLE_LABELS[language][article.category].split('|')[0].trim()}
-                        </div>
                     </div>
 
                     {/* Content - Right Side */}
-                    <div className="flex-grow flex flex-col p-4 md:p-6 justify-between min-w-0">
+                    <div className="flex-grow flex flex-col p-8 md:p-10 justify-between min-w-0">
                         <div>
-                            <div className="mb-2">
-                                <h3 className="text-lg md:text-2xl font-black text-black dark:text-white leading-snug group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-300 line-clamp-3">
+                            <div className="mb-6">
+                                <h3 className="text-xl md:text-3xl font-black text-black dark:text-white leading-snug group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-300 line-clamp-3">
                                     {article.title}
                                 </h3>
                             </div>
+                            <div className="mb-6 text-gray-600 dark:text-gray-400">
+                                <p className="line-clamp-2">{language === 'zh' ? 'Markdown 文章' : 'Markdown Article'}</p>
+                            </div>
                         </div>
                         
-                        <div className="flex items-center gap-3 text-xs md:text-sm font-mono text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-3 mt-2">
+                        <div className="flex items-center gap-6 text-sm md:text-base font-mono text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-6 mt-6">
                              <span>{article.date || 'No Date'}</span>
                              <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>
-                             <span className="truncate hidden md:inline">Markdown Article</span>
+                             <span className="truncate hidden md:inline">{language === 'zh' ? 'Markdown 文章' : 'Markdown Article'}</span>
                         </div>
                     </div>
                 </div>
@@ -478,7 +481,6 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Article Detail Modal */}

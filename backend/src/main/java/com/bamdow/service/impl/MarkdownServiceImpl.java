@@ -3,6 +3,7 @@ package com.bamdow.service.impl;
 
 import com.bamdow.mapper.MarkdownImageMapper;
 import com.bamdow.mapper.MarkdownMapper;
+import com.bamdow.mapper.ProjectMapper;
 import com.bamdow.pojo.dto.MarkdownFileCreateDTO;
 import com.bamdow.pojo.dto.MarkdownImageCreateDTO;
 import com.bamdow.pojo.dto.PageQuery;
@@ -13,6 +14,7 @@ import com.bamdow.pojo.vo.MarkdownFileVO;
 import com.bamdow.service.MarkdownService;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class MarkdownServiceImpl implements MarkdownService {
 
@@ -30,6 +33,8 @@ public class MarkdownServiceImpl implements MarkdownService {
 
     @Autowired
     private MarkdownImageMapper markdownImageMapper;
+    @Autowired
+    private ProjectMapper projectMapper;
 
     /**
      *
@@ -81,5 +86,14 @@ public class MarkdownServiceImpl implements MarkdownService {
     public String getById(String id) {
         MarkdownFile markdownFile = markdownMapper.getById(id);
         return markdownFile.getOssUrl();
+    }
+
+    @Override
+    public void deleteBatch(List<String> ids) {
+        for(String id:ids){
+            markdownImageMapper.deleteById(id);
+            markdownMapper.deleteById(id);
+        }
+        log.info("删除md文件成功，id为{}",ids);
     }
 }

@@ -5,6 +5,7 @@ import com.bamdow.pojo.dto.MarkdownImageCreateDTO;
 import com.bamdow.pojo.dto.PageQuery;
 import com.bamdow.pojo.result.PageResult;
 
+import java.util.List;
 import java.util.Map;
 
 public interface MarkdownService {
@@ -18,4 +19,7 @@ public interface MarkdownService {
 
     //获取到md文件
     String getById(String id);
+
+    //批量删除md文件
+    void deleteBatch(List<String> ids);
 }

@@ -3,6 +3,7 @@ package com.bamdow.mapper;
 import com.bamdow.pojo.dto.PageQuery;
 import com.bamdow.pojo.entity.MarkdownFile;
 import com.github.pagehelper.Page;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -29,4 +30,11 @@ public interface MarkdownMapper {
      */
     @Select("select * from bamdow_web.markdown_files where id = #{id}")
     MarkdownFile getById(String id);
+
+    /**
+     * 根据id删除md文件
+     * @param id
+     */
+    @Delete("delete from bamdow_web.markdown_files where id = #{id}")
+    void deleteById(String id);
 }

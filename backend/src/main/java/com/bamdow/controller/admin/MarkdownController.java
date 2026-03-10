@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @Slf4j
 @RestController
 @RequestMapping("admin/markdown")
@@ -52,5 +54,12 @@ public class MarkdownController {
         log.info("查询md文件id为:{}",id);
         String ossUrl=markdownService.getById(id);
         return Result.success(ossUrl);
+    }
+
+    @DeleteMapping
+    public Result delete(@RequestParam List<String> ids) {
+        log.info("作品批量删除{}",ids);
+        markdownService.deleteBatch(ids);
+        return Result.success();
     }
 }

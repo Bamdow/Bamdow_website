@@ -113,8 +113,29 @@ if (result.items && !result.records) {
   }
 }
 
+// Delete markdown files
+async function deleteMarkdownFiles(ids: string[]): Promise<boolean> {
+  try {
+    const idsParam = ids.join(',');
+    const response = await fetch(`/api/admin/markdown?ids=${idsParam}`, {
+      method: 'DELETE'
+    });
+    
+    const data: ApiResponse<null> = await response.json();
+    if (data.code === 200) {
+      return true;
+    } else {
+      throw new Error(data.message || 'Delete markdown files failed');
+    }
+  } catch (error) {
+    console.error('Delete markdown files error:', error);
+    throw error;
+  }
+}
+
 export const markdownApi = {
   uploadImages,
   uploadMarkdown,
-  getMarkdownFiles
+  getMarkdownFiles,
+  deleteMarkdownFiles
 };
