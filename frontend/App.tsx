@@ -8,6 +8,7 @@ import { PortfolioSection } from './components/PortfolioSection';
 import { ArticleSection } from './components/ArticleSection';
 import { TimelineSection } from './components/TimelineSection';
 import { MusicPlayer } from './components/MusicPlayer';
+import { LoginPage } from './components/LoginPage';
 import { Mail, MapPin, RotateCcw, MessageSquare, Instagram, Youtube, FileText, Aperture, Github, Music } from 'lucide-react';
 import { NAV_ITEMS } from './src/data/navigation';
 import { CONTACT_DATA } from './src/data/contact';
@@ -29,6 +30,7 @@ function App() {
   
   const [gravityActive, setGravityActive] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showLoginPage, setShowLoginPage] = useState(false);
 
   const startViewTransition = (update: () => void) => {
     // Disable view transitions on mobile to prevent flickering and performance issues
@@ -602,135 +604,151 @@ function App() {
     }
   };
 
+  // 处理登录按钮点击
+  const handleLoginClick = () => {
+    setShowLoginPage(true);
+  };
+
+  // 处理登录页面关闭
+  const handleLoginClose = () => {
+    setShowLoginPage(false);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white font-sans selection:bg-black dark:selection:bg-white selection:text-white dark:selection:text-black overflow-x-hidden transition-colors duration-300">
-      
-      <MusicPlayer language={language} />
-      {/* Dynamic Navigation */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={(tab) => startViewTransition(() => setActiveTab(tab))} 
-        language={language}
-        toggleLanguage={toggleLanguage}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        onTriggerGravity={triggerGravity}
-      />
+      {/* 登录页面 */}
+      {showLoginPage ? (
+        <LoginPage language={language} theme={theme} onClose={handleLoginClose} />
+      ) : (
+        <>
+          <MusicPlayer language={language} />
+          {/* Dynamic Navigation */}
+          <Sidebar 
+            activeTab={activeTab} 
+            setActiveTab={(tab) => startViewTransition(() => setActiveTab(tab))} 
+            language={language}
+            toggleLanguage={toggleLanguage}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            onLoginClick={handleLoginClick}
+          />
 
-      {/* Main Content Area */}
-      <main className="w-full pt-40 pb-32 vt-page">
-         <div key={activeTab} className="animate-fade-in">
-           {renderContent()}
-         </div>
+          {/* Main Content Area */}
+          <main className="w-full pt-40 pb-32 vt-page">
+             <div key={activeTab} className="animate-fade-in">
+               {renderContent()}
+             </div>
 
-         {/* Footer */}
-         <footer className="w-full max-w-[96vw] mx-auto mt-32 border-t-2 border-black dark:border-white pt-12 flex flex-col md:flex-row justify-between items-center text-sm font-light text-gray-400 dark:text-gray-500 uppercase tracking-wide gap-4 transition-colors duration-300">
-            <p>© 2026 BAMDOW</p>
-            <p>{content.footerDesign}</p>
-         </footer>
-      </main>
-      
-      {/* Floating Reset Button for Gravity - Fixed Centering Wrapper */}
-      {gravityActive && (
-        <div className="fixed bottom-8 left-0 w-full flex justify-center z-[1001] pointer-events-none">
-          <button 
-            onClick={resetGravity}
-            className="pointer-events-auto bg-black dark:bg-white text-white dark:text-black px-8 py-4 rounded-full font-bold text-xl shadow-2xl animate-fade-in hover:scale-110 transition-transform flex items-center gap-3 cursor-pointer"
-          >
-            <RotateCcw size={24} />
-            {language === 'zh' ? '变回去' : 'Go Back'}
-          </button>
-        </div>
-      )}
+             {/* Footer */}
+             <footer className="w-full max-w-[96vw] mx-auto mt-32 border-t-2 border-black dark:border-white pt-12 flex flex-col md:flex-row justify-between items-center text-sm font-light text-gray-400 dark:text-gray-500 uppercase tracking-wide gap-4 transition-colors duration-300">
+                <p>© 2026 BAMDOW</p>
+                <p>{content.footerDesign}</p>
+             </footer>
+          </main>
+          
+          {/* Floating Reset Button for Gravity - Fixed Centering Wrapper */}
+          {gravityActive && (
+            <div className="fixed bottom-8 left-0 w-full flex justify-center z-[1001] pointer-events-none">
+              <button 
+                onClick={resetGravity}
+                className="pointer-events-auto bg-black dark:bg-white text-white dark:text-black px-8 py-4 rounded-full font-bold text-xl shadow-2xl animate-fade-in hover:scale-110 transition-transform flex items-center gap-3 cursor-pointer"
+              >
+                <RotateCcw size={24} />
+                {language === 'zh' ? '变回去' : 'Go Back'}
+              </button>
+            </div>
+          )}
 
-      {/* Profile Modal */}
-      {showProfileModal && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
-           {/* Backdrop */}
-           <div 
-             className="absolute inset-0 bg-black/80"
-             onClick={() => setShowProfileModal(false)}
-           ></div>
-
-           {/* Modal Content */}
-           <div className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-white/20 dark:border-white/10 overflow-hidden flex flex-col animate-message-pop">
-             {/* Inner scroll container */}
-             <div className="flex-1 overflow-y-auto no-scrollbar">
-               {/* Close Button */}
-               <button 
+          {/* Profile Modal */}
+          {showProfileModal && createPortal(
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
+               {/* Backdrop */}
+               <div 
+                 className="absolute inset-0 bg-black/80"
                  onClick={() => setShowProfileModal(false)}
-                 className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/50 dark:bg-black/50 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-               >
-                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black dark:text-white"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-               </button>
+               ></div>
 
-               {/* Profile Content */}
-               <div className="p-0 md:p-0">
-                 {/* Header Image */}
-                 <div className="w-full h-64 md:h-96 overflow-hidden">
-                   <img 
-                     src={theme === 'light' ? "/images/intro/2.avif" : "/images/intro/8.avif"} 
-                     alt="Profile" 
-                     className="w-full h-full object-cover"
-                   />
-                 </div>
-                 
-                 {/* Text Content */}
-                 <div className="p-6 md:p-12">
-                   <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-8 leading-tight">
-                     {language === 'zh' ? '自述' : 'Profile'}
-                   </h2>
-                   <div className="prose dark:prose-invert max-w-none">
-                     {language === 'zh' ? (
-                       <>
-                         <p className="text-xl text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
-                           你好，欢迎来到Bamdow的个人网站，这是本人第一个真正意义上独立开发的单体项目。前端部分使用了b站
-                           <a 
-                             href="https://space.bilibili.com/14198006" 
-                             target="_blank" 
-                             rel="noopener noreferrer" 
-                             className="text-blue-600 dark:text-blue-400 hover:underline"
-                           >
-                             LuN3cy
-                           </a>
-                           老师的作品作为base，由Trae和个人审美做了一些调整完成。
-                         </p>
-                         <p className="text-xl text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
-                           后端开发ing~
-                         </p>
-                         <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
-                           未完待续...
-                         </p>
-                       </>
-                     ) : (
-                       <>
-                         <p className="text-xl text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
-                           Hello, welcome to Bamdow's personal website. This is my first truly independent single-project development. The front-end part uses the work of Bilibili 
-                           <a 
-                             href="https://space.bilibili.com/14198006" 
-                             target="_blank" 
-                             rel="noopener noreferrer" 
-                             className="text-blue-600 dark:text-blue-400 hover:underline"
-                           >
-                             Bilibili
-                           </a>
-                           as the base, with some adjustments made by Trae and my personal aesthetics.
-                         </p>
-                         <p className="text-xl text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
-                           Back-end development in progress~
-                         </p>
-                         <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
-                           To be continued...
-                         </p>
-                       </>
-                     )}
+               {/* Modal Content */}
+               <div className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-white/20 dark:border-white/10 overflow-hidden flex flex-col animate-message-pop">
+                 {/* Inner scroll container */}
+                 <div className="flex-1 overflow-y-auto no-scrollbar">
+                   {/* Close Button */}
+                   <button 
+                     onClick={() => setShowProfileModal(false)}
+                     className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/50 dark:bg-black/50 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                   >
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black dark:text-white"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                   </button>
+
+                   {/* Profile Content */}
+                   <div className="p-0 md:p-0">
+                     {/* Header Image */}
+                     <div className="w-full h-64 md:h-96 overflow-hidden">
+                       <img 
+                         src={theme === 'light' ? "/images/intro/2.avif" : "/images/intro/8.avif"} 
+                         alt="Profile" 
+                         className="w-full h-full object-cover"
+                       />
+                     </div>
+                     
+                     {/* Text Content */}
+                     <div className="p-6 md:p-12">
+                       <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-8 leading-tight">
+                         {language === 'zh' ? '自述' : 'Profile'}
+                       </h2>
+                       <div className="prose dark:prose-invert max-w-none">
+                         {language === 'zh' ? (
+                           <>
+                             <p className="text-xl text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+                               你好，欢迎来到Bamdow的个人网站，这是本人第一个真正意义上独立开发的单体项目。前端部分使用了b站
+                               <a 
+                                 href="https://space.bilibili.com/14198006" 
+                                 target="_blank" 
+                                 rel="noopener noreferrer" 
+                                 className="text-blue-600 dark:text-blue-400 hover:underline"
+                               >
+                                 LuN3cy
+                               </a>
+                               老师的作品作为base，由Trae和个人审美做了一些调整完成。
+                             </p>
+                             <p className="text-xl text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+                               后端开发ing~
+                             </p>
+                             <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
+                               未完待续...
+                             </p>
+                           </>
+                         ) : (
+                           <>
+                             <p className="text-xl text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+                               Hello, welcome to Bamdow's personal website. This is my first truly independent single-project development. The front-end part uses the work of Bilibili 
+                               <a 
+                                 href="https://space.bilibili.com/14198006" 
+                                 target="_blank" 
+                                 rel="noopener noreferrer" 
+                                 className="text-blue-600 dark:text-blue-400 hover:underline"
+                               >
+                                 Bilibili
+                               </a>
+                               as the base, with some adjustments made by Trae and my personal aesthetics.
+                             </p>
+                             <p className="text-xl text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+                               Back-end development in progress~
+                             </p>
+                             <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
+                               To be continued...
+                             </p>
+                           </>
+                         )}
+                       </div>
+                     </div>
                    </div>
                  </div>
                </div>
-             </div>
-           </div>
-        </div>,
-        document.body
+            </div>,
+            document.body
+          )}
+        </>
       )}
 
     </div>

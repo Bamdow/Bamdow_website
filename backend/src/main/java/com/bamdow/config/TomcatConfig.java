@@ -11,7 +11,7 @@ public class TomcatConfig {
     @Bean
     public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatCustomizer() {
         return factory -> factory.addConnectorCustomizers(connector -> {
-            // 1. 单次POST请求体最大大小（和你application.yml的max-request-size对应，设100MB）
+            // 1. 单次POST请求体最大大小（和application.yml的max-request-size对应，设100MB）
             connector.setMaxPostSize(100 * 1024 * 1024); // 100MB
             // 2. 单次multipart请求允许的文件+表单字段总数（设500个，足够传100张图+各种字段）
             connector.setMaxPartCount(500);

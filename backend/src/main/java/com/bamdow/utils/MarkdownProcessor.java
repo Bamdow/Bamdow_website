@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -33,13 +34,17 @@ public class MarkdownProcessor {
     @Autowired
     private MarkdownService markdownService;
 
+    @Autowired
+    private MinioUtil minioUtil;
+
+
     /**
      * 处理md文件，返回处理后的文件URL
      * @param markdownFile
      * @return
      * @throws IOException
      */
-    public String processMarkdown(MultipartFile markdownFile,MultipartFile[] imageFiles) throws IOException {
+    public String processMarkdown(MultipartFile markdownFile,MultipartFile[] imageFiles) throws Exception {
         //读取md文件内容
         String content = new String(markdownFile.getBytes(), "UTF-8");
         //提取图片并处理
@@ -90,6 +95,7 @@ public class MarkdownProcessor {
         return imagesPathMap;
     }
 
+
     /**
      * 上传md文件中的图片到oss
      *
@@ -97,11 +103,12 @@ public class MarkdownProcessor {
      * @param imageFiles
      * @return
      */
-    private String uploadImageToOss(String imagePath, MultipartFile[] imageFiles) {
+    private String uploadImageToOss(String imagePath, MultipartFile[] imageFiles) throws Exception {
         // 检查是否为Base64编码图片
         if (imagePath.startsWith("data:image/")) {
             // 处理Base64编码图片
             return handleBase64Image(imagePath);
+
         } else {
             // 处理本地路径图片
             String ossUrl = handleLocalImage(imagePath, imageFiles);
@@ -117,13 +124,18 @@ public class MarkdownProcessor {
      */
     private String handleLocalImage(String localPath, MultipartFile[] imageFiles) {
         // 从本地路径中提取文件名
-        String fileName = localPath.substring(localPath.lastIndexOf("/") + 1);
+        String fileName = localPath;
+        if (localPath.contains("/")) {
+            fileName = localPath.substring(localPath.lastIndexOf("/") + 1);
+        } else if (localPath.contains("\\")) {
+            fileName = localPath.substring(localPath.lastIndexOf("\\") + 1);
+        }
 
         // 查找对应的上传文件
         MultipartFile matchedFile = findMatchedImageFile(fileName, imageFiles);
 
         if (matchedFile == null) {
-            throw new RuntimeException("未找到对应的图片文件: " + fileName);
+            throw new RuntimeException("未找到对应的图片文件: " + localPath);
         }
 
         try {
@@ -132,10 +144,15 @@ public class MarkdownProcessor {
             String uniqueFileName = UUID.randomUUID().toString() + suffix;
             String objectName = "images/" + new SimpleDateFormat("yyyyMMdd").format(new Date()) + "/" + uniqueFileName;
 
-            // 上传到OSS
-            byte[] bytes = matchedFile.getBytes();
-            return aliyunOssUtil.upload(bytes, objectName);
-        } catch (IOException e) {
+//            // 上传到OSS
+//            byte[] bytes = matchedFile.getBytes();
+//            return aliyunOssUtil.upload(bytes, objectName);
+
+            //上传到minio
+            return minioUtil.uploadFile(matchedFile,objectName);
+
+
+        } catch (Exception e) {
             throw new RuntimeException("图片文件处理失败: " + e.getMessage());
         }
     }
@@ -182,21 +199,35 @@ public class MarkdownProcessor {
      * Base64编码图片处理
      * @param base64Image
      * @return
-     */
-    private String handleBase64Image(String base64Image) {
-        String base64Data=base64Image;
-        // 解码Base64数据
-        byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+     * */
+    private String handleBase64Image(String base64Image) throws Exception {
+    // 去除Base64前缀
+    String base64Data = base64Image;
+    if (base64Image.contains("base64,")) {
+    base64Data = base64Image.split("base64,")[1];
+    }
 
-        //生成唯一文件名
-        String suffix = getImageSuffixFromBase64(base64Image);
-        String fileName=UUID.randomUUID().toString()+suffix;
-        String objectName = "images/" + new SimpleDateFormat("yyyyMMdd").format(new Date()) + "/" + fileName;
+    // 解码Base64数据
+    byte[] imageBytes = Base64.getDecoder().decode(base64Data.getBytes(StandardCharsets.UTF_8));
 
-        //上传到oss
-        return aliyunOssUtil.upload(imageBytes, objectName);
+    //生成唯一文件名
+    String suffix = getImageSuffixFromBase64(base64Image);
+    String fileName=UUID.randomUUID().toString()+suffix;
+    String objectName = "images/" + new SimpleDateFormat("yyyyMMdd").format(new Date()) + "/" + fileName;
+
+    //上传到oss
+    return aliyunOssUtil.upload(imageBytes, objectName);
+
+
+    //        //base64转MultipartFile实现
+    //        //提取完整的datauri前缀
+    //        String dataURI=base64Image.split(",")[0];
+    //        MultipartFile file=new Base64ToMultipartFile(imageBytes,dataURI);
+    //       //上传到minio
+    //        return minioUtil.uploadFile(file,objectName);
 
     }
+
 
     /**
      * 获取到Base64文件的后缀
@@ -239,7 +270,7 @@ public class MarkdownProcessor {
      * @param objectFileName
      * @return
      */
-    public MarkdownFileCreateDTO uploadMarkdown(String content, String objectFileName) {
+    public MarkdownFileCreateDTO uploadMarkdown(String content, String objectFileName) throws Exception {
         // 生成唯一文件名，格式：markdown/yyyyMMdd/UUID.md
         String datePath = new SimpleDateFormat("yyyyMMdd").format(new Date());
         String fileName = UUID.randomUUID().toString() + ".md";
@@ -249,7 +280,12 @@ public class MarkdownProcessor {
         byte[] bytes = content.getBytes();
         MarkdownFileCreateDTO markdownFileCreateDTO = new MarkdownFileCreateDTO();
         markdownFileCreateDTO.setFileName(objectName);
-        markdownFileCreateDTO.setOssUrl(aliyunOssUtil.upload(bytes, objectName));
+//        markdownFileCreateDTO.setOssUrl(aliyunOssUtil.upload(bytes, objectName));
+
+//        //将byte[]转为MultipartFile类存入minio中
+        MultipartFile file = CustomMultipartFile.CustomMultipartFileConverter.convertUsingCustom(bytes, objectName);
+
+        markdownFileCreateDTO.setOssUrl(minioUtil.uploadFile(file,objectName));
         return markdownFileCreateDTO;
     }
 }

@@ -2,6 +2,7 @@ package com.bamdow.controller.admin;
 
 import com.bamdow.pojo.result.Result;
 import com.bamdow.utils.AliyunOssUtil;
+import com.bamdow.utils.MinioUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,9 @@ public class UploadController {
     @Autowired
     private AliyunOssUtil aliyunOssUtil;
 
+    @Autowired
+    private MinioUtil minioUtil;
+
     @PostMapping("/images")
     public Result<List<String>> uploadImage(@RequestParam("files") MultipartFile[] files) throws IOException {
         try{
@@ -42,8 +46,11 @@ public class UploadController {
                 String suffix = fileName.substring(fileName.lastIndexOf("."));
                 String objectName = UUID.randomUUID() + suffix;
 
-                // 调用工具类上传，获取单个文件URL
-                String imageUrl = aliyunOssUtil.upload(file.getBytes(), objectName);
+//                // 调用阿里云oss工具类上传，获取单个文件URL
+//                String imageUrl = aliyunOssUtil.upload(file.getBytes(), objectName);
+
+                //调用minio工具类上传，获取单个文件URL
+                String imageUrl = minioUtil.uploadFile(file, objectName);
 
                 // 收集URL
                 imageUrlList.add(imageUrl);

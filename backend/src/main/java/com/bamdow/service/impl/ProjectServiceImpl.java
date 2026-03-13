@@ -10,6 +10,7 @@ import com.bamdow.pojo.vo.ProjectDetailVO;
 import com.bamdow.pojo.vo.ProjectListVO;
 import com.bamdow.pojo.vo.ProjectQueryVO;
 import com.bamdow.service.ProjectService;
+import com.bamdow.utils.MinioUtil;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,9 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Autowired
     private ProjectImageMapper projectImageMapper;
+
+    @Autowired
+    MinioUtil minioUtil;
 
     @Transactional
     @Override

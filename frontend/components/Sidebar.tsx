@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { NAV_ITEMS } from '../src/data/navigation';
 import { Language } from '../types';
-import { Moon, Sun, Globe, Bomb } from 'lucide-react';
+import { Moon, Sun, Globe, LogIn } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -11,7 +11,7 @@ interface SidebarProps {
   toggleLanguage: () => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  onTriggerGravity: () => void;
+  onLoginClick: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -21,7 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   toggleLanguage,
   theme,
   toggleTheme,
-  onTriggerGravity
+  onLoginClick
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -103,13 +103,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                {theme === 'light' ? <Moon size={20} className="md:w-6 md:h-6" /> : <Sun size={20} className="md:w-6 md:h-6" />}
              </button>
              
-             {/* Gravity Bonus Toggle */}
+             {/* Login Button */}
              <button 
-               onClick={onTriggerGravity}
-               className="p-1 md:p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition-colors text-black dark:text-white"
-               title="Boom!"
+               onClick={onLoginClick}
+               className="p-1 md:p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors text-black dark:text-white flex items-center gap-1"
+               title={language === 'zh' ? '登录' : 'Login'}
              >
-               <Bomb size={20} className="md:w-6 md:h-6 hover:text-red-500 transition-colors" />
+               <LogIn size={20} className="md:w-6 md:h-6 hover:text-blue-500 transition-colors" />
+               <span className="text-base md:text-lg font-bold">{language === 'zh' ? '登录' : 'Login'}</span>
              </button>
           </div>
 
