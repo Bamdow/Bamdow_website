@@ -43,8 +43,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Autowired
     private ProjectImageMapper projectImageMapper;
 
-    @Autowired
-    MinioUtil minioUtil;
+
 
     @Transactional
     @Override

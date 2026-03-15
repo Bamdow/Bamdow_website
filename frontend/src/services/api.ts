@@ -1,5 +1,6 @@
 import { Project, Category, Language } from '../../types';
 import { PROJECT_DATA } from '../data/projects';
+import { addAuthHeader } from './authApi';
 
 // 模拟API延迟
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -23,7 +24,7 @@ export class ApiService {
   static async getProjects(language: Language, category?: string): Promise<Project[]> {
     try {
       // 构建请求URL和参数
-      const url = new URL('/api/admin/projects', window.location.origin);
+      const url = new URL('/api/user/projects', window.location.origin);
       if (category && category !== 'All') {
         url.searchParams.append('category', category);
       }
@@ -140,7 +141,7 @@ export class ApiService {
   static async getProjectById(id: string, language: Language): Promise<Project | null> {
     try {
       // 构建请求URL
-      const url = new URL(`/api/admin/projects/${id}`, window.location.origin);
+      const url = new URL(`/api/user/projects/${id}`, window.location.origin);
       
       // 实际发送API请求
       console.log('Fetching project details from:', url.toString());
@@ -287,9 +288,9 @@ export class ApiService {
       
       const response = await fetch('/api/admin/projects', {
         method: 'POST',
-        headers: {
+        headers: addAuthHeader({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify(requestBody),
       });
       
@@ -365,13 +366,14 @@ export class ApiService {
   static async uploadImage(file: File): Promise<string> {
     try {
       // 实际发送图片上传请求
-      console.log('Uploading image to /api/admin/upload/images:', file.name);
+      console.log('Uploading image to /api/upload/image:', file.name);
       
       const formData = new FormData();
-      formData.append('files', file); // 使用 files 字段，与后端保持一致
+      formData.append('file', file); // 使用 file 字段，与后端保持一致
       
       const response = await fetch('/api/admin/upload/images', {
         method: 'POST',
+        headers: addAuthHeader(),
         body: formData,
       });
       
@@ -382,7 +384,7 @@ export class ApiService {
       const data = await response.json();
       console.log('Received upload response:', data);
       
-      // 正确处理后端响应格式：data 字段直接包含 URL 数组
+      // 正确处理后端响应格式：data 字段是一个数组，包含图片URL
       return data.data[0];
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -396,28 +398,13 @@ export class ApiService {
   // 上传多张图片
   static async uploadImages(files: File[]): Promise<string[]> {
     try {
-      // 实际发送多图片上传请求
+      // 实际发送多图片上传请求，多次调用单张图片上传接口
       console.log('Uploading multiple images to /api/admin/upload/images:', files.length);
       
-      const formData = new FormData();
-      files.forEach((file, index) => {
-        formData.append('files', file);
-      });
+      const uploadPromises = files.map(file => this.uploadImage(file));
+      const imageUrls = await Promise.all(uploadPromises);
       
-      const response = await fetch('/api/admin/upload/images', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Received upload response:', data);
-      
-      // 正确处理后端响应格式：data 字段直接包含 URL 数组
-      return data.data;
+      return imageUrls;
     } catch (error) {
       console.error('Error uploading images:', error);
       
@@ -445,9 +432,9 @@ export class ApiService {
       
       const response = await fetch(`/api/admin/projects/${id}`, {
         method: 'PUT',
-        headers: {
+        headers: addAuthHeader({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify(requestBody),
       });
       
@@ -531,9 +518,9 @@ export class ApiService {
       
       const response = await fetch(url, {
         method: 'DELETE',
-        headers: {
+        headers: addAuthHeader({
           'Content-Type': 'application/json',
-        },
+        }),
       });
       
       if (!response.ok) {

@@ -33,6 +33,8 @@ public class MarkdownServiceImpl implements MarkdownService {
 
     @Autowired
     private MarkdownImageMapper markdownImageMapper;
+    @Autowired
+    private ProjectMapper projectMapper;
 
     /**
      *

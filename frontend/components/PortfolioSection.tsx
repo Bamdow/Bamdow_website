@@ -11,6 +11,7 @@ interface PortfolioSectionProps {
   language: Language;
   externalFilter?: string; // Controlled by parent if needed
   showActions?: boolean; // Whether to show edit and add buttons
+  userLoggedIn?: boolean; // Whether user is logged in
 }
 
 const GalleryImage = ({ src, alt, onClick }: { src: string, alt: string, onClick: (e: React.MouseEvent) => void }) => {
@@ -40,8 +41,8 @@ const GalleryImage = ({ src, alt, onClick }: { src: string, alt: string, onClick
   );
 };
 
-export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, externalFilter, showActions = false }) => {
-  const [filter, setFilter] = useState<string>('All');
+export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, externalFilter, showActions = false, userLoggedIn = false }) => {
+  const [filter, setFilter] = useState<string>(externalFilter || 'All');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [displayProject, setDisplayProject] = useState<Project | null>(null);
   const [isModalRendered, setIsModalRendered] = useState(false);
@@ -106,15 +107,11 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
 
   // Sync with external filter if provided
   useEffect(() => {
-    if (externalFilter) {
+    if (externalFilter && externalFilter !== filter) {
       setFilter(externalFilter);
+      setCurrentPage(1);
     }
   }, [externalFilter]);
-
-  // Reset page when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter]);
 
   // Fetch projects from API
   useEffect(() => {
@@ -133,7 +130,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
     };
 
     fetchProjects();
-  }, [language, filter]);
+  }, [language, filter, currentPage]);
 
   // Get Categories in preferred order
   const preferredOrder = [
@@ -446,8 +443,8 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
             <span className="text-base lg:text-lg font-mono text-gray-500 dark:text-gray-400 font-bold tracking-widest transition-colors duration-300">[ 2026 — ]</span>
           )}
           
-          {/* Action Buttons - Only show in works page (showActions is true) */}
-          {showActions && (
+          {/* Action Buttons - Only show in works page (showActions is true) and user is logged in */}
+          {showActions && userLoggedIn && (
             <>
               {/* Delete Button - Only show in edit mode */}
               {editMode && (
@@ -553,7 +550,7 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
             key={project.id} 
             className="group relative cursor-pointer flex flex-col h-full transform-gpu"
             onClick={() => {
-              if (editMode) {
+              if (editMode && userLoggedIn) {
                 // Toggle selection
                 setSelectedProjects(prev => {
                   if (prev.includes(project.id)) {
@@ -580,8 +577,8 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ language, ex
               }
             }}
           >
-            {/* Selection Circle - Only show in edit mode */}
-            {editMode && (
+            {/* Selection Circle - Only show in edit mode and user is logged in */}
+            {editMode && userLoggedIn && (
               <button
                 className="absolute top-4 right-4 z-10 p-2 rounded-full transition-all duration-300 bg-white dark:bg-gray-900 shadow-md"
                 onClick={(e) => {

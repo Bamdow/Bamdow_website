@@ -1,4 +1,5 @@
 import { Article } from '../../types';
+import { addAuthHeader } from './authApi';
 
 // API response types
 interface ApiResponse<T> {
@@ -22,23 +23,27 @@ interface MarkdownListResponse {
 
 // Upload image files
 async function uploadImages(files: File[]): Promise<string[]> {
-  const formData = new FormData();
-  files.forEach(file => {
-    formData.append('files', file);
-  });
-
   try {
-    const response = await fetch('/api/admin/upload/images', {
-      method: 'POST',
-      body: formData
+    // 多次调用单张图片上传接口
+    const uploadPromises = files.map(async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/admin/upload/images', {
+        method: 'POST',
+        headers: addAuthHeader(),
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data.code === 200) {
+        return data.data[0];
+      } else {
+        throw new Error(data.message || 'Image upload failed');
+      }
     });
 
-    const data: ApiResponse<string[]> = await response.json();
-    if (data.code === 200) {
-      return data.data;
-    } else {
-      throw new Error(data.message || 'Image upload failed');
-    }
+    return await Promise.all(uploadPromises);
   } catch (error) {
     console.error('Image upload error:', error);
     throw error;
@@ -57,6 +62,7 @@ async function uploadMarkdown(file: File, images: File[]): Promise<string> {
   try {
     const response = await fetch('/api/admin/markdown', {
       method: 'POST',
+      headers: addAuthHeader(),
       body: formData
     });
 
@@ -75,7 +81,11 @@ async function uploadMarkdown(file: File, images: File[]): Promise<string> {
 // Get markdown files with pagination
 async function getMarkdownFiles(page: number = 1, size: number = 10): Promise<MarkdownListResponse> {
   try {
-    const response = await fetch(`/api/admin/markdown?page=${page}&size=${size}`);
+    const response = await fetch(`/api/user/markdown?page=${page}&size=${size}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
     const data: ApiResponse<MarkdownListResponse> = await response.json();
     if (data.code === 200) {
       // 处理后端返回的数据结构
@@ -118,7 +128,8 @@ async function deleteMarkdownFiles(ids: string[]): Promise<boolean> {
   try {
     const idsParam = ids.join(',');
     const response = await fetch(`/api/admin/markdown?ids=${idsParam}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: addAuthHeader()
     });
     
     const data: ApiResponse<null> = await response.json();

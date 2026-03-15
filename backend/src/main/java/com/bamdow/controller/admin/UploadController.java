@@ -1,5 +1,6 @@
 package com.bamdow.controller.admin;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.bamdow.pojo.result.Result;
 import com.bamdow.utils.AliyunOssUtil;
 import com.bamdow.utils.MinioUtil;
@@ -26,9 +27,9 @@ public class UploadController {
 
     @Autowired
     private MinioUtil minioUtil;
-
+    @SaCheckLogin
     @PostMapping("/images")
-    public Result<List<String>> uploadImage(@RequestParam("files") MultipartFile[] files) throws IOException {
+    public Result<List<String>> uploadImage(@RequestParam("file") MultipartFile[] files) throws IOException {
         try{
             // 存储所有上传成功的图片URL
             List<String> imageUrlList = new ArrayList<>();

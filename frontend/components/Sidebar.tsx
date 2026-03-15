@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { NAV_ITEMS } from '../src/data/navigation';
 import { Language } from '../types';
-import { Moon, Sun, Globe, LogIn } from 'lucide-react';
+import { Moon, Sun, Globe, LogIn, LogOut } from 'lucide-react';
+import { logout } from '../src/services/authApi';
 
 interface SidebarProps {
   activeTab: string;
@@ -12,6 +13,8 @@ interface SidebarProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   onLoginClick: () => void;
+  userLoggedIn: boolean;
+  onLogout: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -21,7 +24,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   toggleLanguage,
   theme,
   toggleTheme,
-  onLoginClick
+  onLoginClick,
+  userLoggedIn,
+  onLogout
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -103,15 +108,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
                {theme === 'light' ? <Moon size={20} className="md:w-6 md:h-6" /> : <Sun size={20} className="md:w-6 md:h-6" />}
              </button>
              
-             {/* Login Button */}
-             <button 
-               onClick={onLoginClick}
-               className="p-1 md:p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors text-black dark:text-white flex items-center gap-1"
-               title={language === 'zh' ? '登录' : 'Login'}
-             >
-               <LogIn size={20} className="md:w-6 md:h-6 hover:text-blue-500 transition-colors" />
-               <span className="text-base md:text-lg font-bold">{language === 'zh' ? '登录' : 'Login'}</span>
-             </button>
+             {/* Login/Logout Button */}
+             {!userLoggedIn ? (
+               <button 
+                 onClick={onLoginClick}
+                 className="p-1 md:p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors text-black dark:text-white flex items-center gap-1"
+                 title={language === 'zh' ? '登录' : 'Login'}
+               >
+                 <LogIn size={20} className="md:w-6 md:h-6 hover:text-blue-500 transition-colors" />
+                 <span className="text-base md:text-lg font-bold">{language === 'zh' ? '登录' : 'Login'}</span>
+               </button>
+             ) : (
+               <button 
+                 onClick={async () => {
+                   const success = await logout();
+                   if (success) {
+                     onLogout();
+                   }
+                 }}
+                 className="p-1 md:p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition-colors text-black dark:text-white flex items-center gap-1"
+                 title={language === 'zh' ? '登出' : 'Logout'}
+               >
+                 <LogOut size={20} className="md:w-6 md:h-6 hover:text-red-500 transition-colors" />
+                 <span className="text-base md:text-lg font-bold">{language === 'zh' ? '登出' : 'Logout'}</span>
+               </button>
+             )}
           </div>
 
         </div>

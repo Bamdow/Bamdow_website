@@ -1,6 +1,7 @@
 package com.bamdow.controller.admin;
 
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.bamdow.pojo.dto.PageQuery;
 import com.bamdow.pojo.result.PageResult;
 import com.bamdow.pojo.result.Result;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
+@SaCheckLogin
 @RequestMapping("admin/markdown")
 public class MarkdownController {
 
@@ -24,7 +26,6 @@ public class MarkdownController {
 
     @Autowired
     private MarkdownService markdownService;
-
     @PostMapping
     public Result<String> uploadMarkdown(
             @RequestParam("file") MultipartFile markdownFile,
@@ -56,9 +57,10 @@ public class MarkdownController {
         return Result.success(ossUrl);
     }
 
+
     @DeleteMapping
     public Result delete(@RequestParam List<String> ids) {
-        log.info("作品批量删除{}",ids);
+        log.info("md文件批量删除{}",ids);
         markdownService.deleteBatch(ids);
         return Result.success();
     }

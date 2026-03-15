@@ -1,4 +1,5 @@
 package com.bamdow.controller.admin;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.bamdow.pojo.dto.PageQuery;
 import com.bamdow.pojo.dto.ProjectCreateDTO;
 import com.bamdow.pojo.dto.ProjectUpdateDTO;
@@ -16,9 +17,11 @@ import java.util.List;
 @RestController
 @Slf4j
 @RequestMapping("/admin/projects")
+@SaCheckLogin
 public class ProjectController {
     @Autowired
     ProjectService projectService;
+
 
     @PostMapping
     public Result save(@RequestBody ProjectCreateDTO projectCreateDTO) {
@@ -40,6 +43,7 @@ public class ProjectController {
         ProjectDetailVO projectDetailVO=projectService.getById(id);
         return Result.success(projectDetailVO);
     }
+
 
     @PutMapping("/{id}")
     public Result update(@PathVariable String id,@RequestBody ProjectUpdateDTO projectUpdateDTO) {

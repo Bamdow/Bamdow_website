@@ -9,6 +9,7 @@ import { ArticleSection } from './components/ArticleSection';
 import { TimelineSection } from './components/TimelineSection';
 import { MusicPlayer } from './components/MusicPlayer';
 import { LoginPage } from './components/LoginPage';
+import { isLoggedIn } from './src/services/authApi';
 import { Mail, MapPin, RotateCcw, MessageSquare, Instagram, Youtube, FileText, Aperture, Github, Music } from 'lucide-react';
 import { NAV_ITEMS } from './src/data/navigation';
 import { CONTACT_DATA } from './src/data/contact';
@@ -31,6 +32,7 @@ function App() {
   const [gravityActive, setGravityActive] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLoginPage, setShowLoginPage] = useState(false);
+  const [userLoggedIn, setUserLoggedIn] = useState<boolean>(false);
 
   const startViewTransition = (update: () => void) => {
     // Disable view transitions on mobile to prevent flickering and performance issues
@@ -77,7 +79,7 @@ function App() {
 
   // Preload images for contact page to reduce lag when switching themes
   useEffect(() => {
-    // Preload light mode images
+    // Preload images for contact page to reduce lag when switching themes
     const lightImages = [
       '/images/intro/1.avif',
       '/images/intro/2.avif',
@@ -108,6 +110,11 @@ function App() {
     // Preload all images
     preloadImages(lightImages);
     preloadImages(darkImages);
+  }, []);
+
+  // Check if user is logged in on component mount
+  useEffect(() => {
+    setUserLoggedIn(isLoggedIn());
   }, []);
 
   // Scroll to top when activeTab changes
@@ -417,7 +424,7 @@ function App() {
               language={language} 
               theme={theme}
             />
-            <PortfolioSection language={language} externalFilter={portfolioCategory} />
+            <PortfolioSection language={language} externalFilter={portfolioCategory} userLoggedIn={userLoggedIn} />
           </>
         );
       case 'portfolio':
@@ -442,7 +449,7 @@ function App() {
              </div>
              
              <div className="relative z-10">
-               <PortfolioSection language={language} externalFilter={portfolioCategory} showActions={true} />
+               <PortfolioSection language={language} externalFilter={portfolioCategory} showActions={true} userLoggedIn={userLoggedIn} />
              </div>
           </div>
         );
@@ -457,7 +464,7 @@ function App() {
                  {ARTICLES_PAGE_DATA[language].description}
                </p>
              </div>
-             <ArticleSection language={language} />
+             <ArticleSection language={language} userLoggedIn={userLoggedIn} />
           </div>
         );
       case 'about':
@@ -598,7 +605,7 @@ function App() {
               onCategorySelect={handleHeroNavigation}
               language={language} 
             />
-            <PortfolioSection language={language} externalFilter={portfolioCategory} />
+            <PortfolioSection language={language} externalFilter={portfolioCategory} userLoggedIn={userLoggedIn} />
           </>
         );
     }
@@ -612,6 +619,8 @@ function App() {
   // 处理登录页面关闭
   const handleLoginClose = () => {
     setShowLoginPage(false);
+    // 登录页面关闭后检查用户是否已登录
+    setUserLoggedIn(isLoggedIn());
   };
 
   return (
@@ -631,6 +640,8 @@ function App() {
             theme={theme}
             toggleTheme={toggleTheme}
             onLoginClick={handleLoginClick}
+            userLoggedIn={userLoggedIn}
+            onLogout={() => setUserLoggedIn(false)}
           />
 
           {/* Main Content Area */}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Language } from '../types';
-import { LogIn, Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { LogIn, Eye, EyeOff, User, Lock } from 'lucide-react';
+import { login } from '../src/services/authApi';
 
 interface LoginPageProps {
   language: Language;
@@ -9,28 +10,37 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ language, theme, onClose }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // 模拟登录请求
-    setTimeout(() => {
+    try {
+      // 获取记住我选项的值
+      const rememberMe = (document.getElementById('remember') as HTMLInputElement)?.checked || false;
+      
+      // 调用登录API
+      const success = await login(username, password, rememberMe);
+      
       setIsLoading(false);
-      // 这里可以添加实际的登录逻辑
-      if (email && password) {
-        // 登录成功后的处理
-        console.log('Login successful');
+      
+      if (success) {
+        // 登录成功后关闭登录页面
+        onClose();
       } else {
-        setError(language === 'zh' ? '请输入邮箱和密码' : 'Please enter email and password');
+        setError(language === 'zh' ? '登录失败，请检查用户名和密码' : 'Login failed, please check username and password');
       }
-    }, 1000);
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Login error:', error);
+      setError(language === 'zh' ? '登录失败，请重试' : 'Login failed, please try again');
+    }
   };
 
   return (
@@ -61,19 +71,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, theme, onClose }
           )}
 
           <div className="space-y-6">
-            {/* Email Field */}
+            {/* Username Field */}
             <div>
               <label className="block text-sm font-bold mb-2 text-black dark:text-white">
-                {language === 'zh' ? '邮箱' : 'Email'}
+                {language === 'zh' ? '用户名' : 'Username'}
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder={language === 'zh' ? '请输入您的邮箱' : 'Please enter your email'}
+                  placeholder={language === 'zh' ? '请输入您的用户名' : 'Please enter your username'}
                   required
                 />
               </div>
@@ -104,24 +114,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, theme, onClose }
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="remember" className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                  {language === 'zh' ? '记住我' : 'Remember me'}
-                </label>
-              </div>
-              <a
-                href="#"
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {language === 'zh' ? '忘记密码？' : 'Forgot password?'}
-              </a>
+            {/* Remember Me */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="remember"
+                className="w-4 h-4 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="remember" className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                {language === 'zh' ? '记住我' : 'Remember me'}
+              </label>
             </div>
 
             {/* Login and Cancel Buttons */}
@@ -147,18 +149,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, theme, onClose }
               </button>
             </div>
 
-            {/* Register Link */}
-            <div className="text-center">
-              <span className="text-gray-600 dark:text-gray-400">
-                {language === 'zh' ? '还没有账户？' : 'Don\'t have an account?'}
-              </span>
-              <a
-                href="#"
-                className="ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
-              >
-                {language === 'zh' ? '注册' : 'Register'}
-              </a>
-            </div>
+
           </div>
         </form>
       </div>

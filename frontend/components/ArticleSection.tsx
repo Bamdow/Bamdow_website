@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ARTICLE_LABELS } from '../constants';
 import { ArticleCategory, Language, Article } from '../types';
 import { Calendar, Filter, Edit, Plus, Trash2, X, BookOpen, Upload, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { markdownApi } from '../src/services/markdownApi';
 import Markdown from 'react-markdown';
+import { isLoggedIn } from '../src/services/authApi';
 
 // Example article data with Markdown content
 const EXAMPLE_ARTICLES: Article[] = [
@@ -54,9 +55,10 @@ const EXAMPLE_ARTICLES: Article[] = [
 
 interface ArticleSectionProps {
   language: Language;
+  userLoggedIn?: boolean;
 }
 
-export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
+export const ArticleSection: React.FC<ArticleSectionProps> = ({ language, userLoggedIn = false }) => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   
@@ -121,7 +123,7 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
 
 
   // Fetch articles from backend
-  const fetchArticles = async () => {
+  const fetchArticles = useCallback(async () => {
     setLoading(true);
     try {
       const response = await markdownApi.getMarkdownFiles(currentPage, pageSize);
@@ -173,7 +175,7 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize]);
 
   // Extract first image URL from markdown content
   const extractFirstImageUrl = (content: string): string => {
@@ -238,8 +240,8 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
              </div>
               
              <div className="flex items-center gap-4">
-               {/* Delete Button - Only show in edit mode */}
-               {editMode && (
+               {/* Delete Button - Only show in edit mode and when user is logged in */}
+               {editMode && userLoggedIn && (
                  <button
                    className={`p-2 rounded-full transition-colors duration-300 ${
                      selectedArticles.length > 0 
@@ -252,13 +254,13 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                        try {
                          // 调用删除接口
                          await markdownApi.deleteMarkdownFiles(selectedArticles);
-                         
+                          
                          // 显示成功提示
                          alert(language === 'zh' ? '删除成功' : 'Delete success');
-                         
+                          
                          // 清空选中状态
                          setSelectedArticles([]);
-                         
+                          
                          // 刷新文章列表
                          fetchArticles();
                        } catch (error) {
@@ -274,52 +276,56 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                  </button>
                )}
                
-               {/* Edit Button */}
-               <button
-                 className={`p-2 rounded-full transition-colors duration-300 ${
-                   editMode 
-                     ? 'bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100'
-                     : 'bg-gray-100 dark:bg-gray-800 text-black dark:text-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black'
-                 }`}
-                 title={editMode ? (language === 'zh' ? '退出编辑' : 'Exit Edit') : (language === 'zh' ? '编辑文章' : 'Edit Article')}
-                 onClick={() => {
-                   setEditMode(!editMode);
-                   setSelectedArticles([]);
-                 }}
-               >
-                 <Edit size={20} />
-               </button>
+               {/* Edit Button - Only show when user is logged in */}
+               {userLoggedIn && (
+                 <button
+                   className={`p-2 rounded-full transition-colors duration-300 ${
+                     editMode 
+                       ? 'bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100'
+                       : 'bg-gray-100 dark:bg-gray-800 text-black dark:text-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black'
+                   }`}
+                   title={editMode ? (language === 'zh' ? '退出编辑' : 'Exit Edit') : (language === 'zh' ? '编辑文章' : 'Edit Article')}
+                   onClick={() => {
+                     setEditMode(!editMode);
+                     setSelectedArticles([]);
+                   }}
+                 >
+                   <Edit size={20} />
+                 </button>
+               )}
                
-               {/* Add Button */}
-               <button
-                 className={`p-2 rounded-full transition-colors duration-300 cursor-pointer ${
-                   editMode 
-                     ? 'bg-gray-100 dark:bg-gray-800 text-black dark:text-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black'
-                     : 'bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 hover:text-white dark:hover:text-black'
-                 }`}
-                 title={editMode 
-                   ? (language === 'zh' ? '全选/取消全选' : 'Select All/Deselect All') 
-                   : (language === 'zh' ? '新增文章' : 'Add Article')}
-                 onClick={() => {
-                   if (!editMode) {
-                     setShowAddModal(true);
-                   } else {
-                     if (selectedArticles.length === filteredAndSortedArticles.length) {
-                       setSelectedArticles([]);
+               {/* Add Button - Only show when user is logged in */}
+               {userLoggedIn && (
+                 <button
+                   className={`p-2 rounded-full transition-colors duration-300 cursor-pointer ${
+                     editMode 
+                       ? 'bg-gray-100 dark:bg-gray-800 text-black dark:text-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black'
+                       : 'bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 hover:text-white dark:hover:text-black'
+                   }`}
+                   title={editMode 
+                     ? (language === 'zh' ? '全选/取消全选' : 'Select All/Deselect All') 
+                     : (language === 'zh' ? '新增文章' : 'Add Article')}
+                   onClick={() => {
+                     if (!editMode) {
+                       setShowAddModal(true);
                      } else {
-                       setSelectedArticles(filteredAndSortedArticles.map(article => article.id));
+                       if (selectedArticles.length === filteredAndSortedArticles.length) {
+                         setSelectedArticles([]);
+                       } else {
+                         setSelectedArticles(filteredAndSortedArticles.map(article => article.id));
+                       }
                      }
-                   }
-                 }}
-               >
-                 {editMode ? (
-                   <span className="text-sm font-bold flex items-center justify-center w-6 h-6">
-                     {language === 'zh' ? '全' : 'All'}
-                   </span>
-                 ) : (
-                   <Plus size={20} />
-                 )}
-               </button>
+                   }}
+                 >
+                   {editMode ? (
+                     <span className="text-sm font-bold flex items-center justify-center w-6 h-6">
+                       {language === 'zh' ? '全' : 'All'}
+                     </span>
+                   ) : (
+                     <Plus size={20} />
+                   )}
+                 </button>
+               )}
               
                <button 
                  onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
@@ -351,7 +357,7 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                     setSelectedArticle({ ...article, content: 'Loading...' });
                     
                     // 调用后端接口获取Markdown文件的OSS URL
-                    fetch(`/api/admin/markdown/${article.id}`)
+                    fetch(`/api/user/markdown/${article.id}`)
                       .then(response => {
                         if (!response.ok) {
                           throw new Error('Failed to fetch markdown URL');
@@ -386,8 +392,8 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language }) => {
                   }
                 }}
               >
-                {/* Selection Circle - Only show in edit mode */}
-                {editMode && (
+                {/* Selection Circle - Only show in edit mode and when user is logged in */}
+                {editMode && userLoggedIn && (
                   <button
                     className={`absolute top-4 right-4 z-10 p-2 rounded-full transition-all duration-300 bg-white dark:bg-black shadow-md`}
                     onClick={(e) => {
