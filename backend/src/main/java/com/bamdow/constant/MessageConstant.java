@@ -11,5 +11,9 @@ public class MessageConstant {
     public static final String UNKNOWN_ERROR = "未知错误";
     public static final String USER_NOT_LOGIN = "用户未登录";
     public static final String LOGIN_FAILED = "登录失败";
+    public static final String FEATURE_EXTRACTION_FAILED = "特征提取失败";
+    public static final String FACE_RECOGNITION_FAILED = "人脸识别失败";
+    public static final String LIVE_DETECTION_FAILED = "活体检测失败";
+
 
 }

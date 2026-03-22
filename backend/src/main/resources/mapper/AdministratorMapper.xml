@@ -1,0 +1,12 @@
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bamdow.mapper.AdministratorMapper">
+
+    <update id="updateFeature">
+        update bamdow_web.administrator
+        set feature_str = #{featureStr}
+        where id = #{id}
+    </update>
+
+</mapper>

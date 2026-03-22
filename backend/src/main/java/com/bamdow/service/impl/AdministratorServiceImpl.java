@@ -7,6 +7,7 @@ import com.bamdow.mapper.AdministratorMapper;
 import com.bamdow.pojo.dto.AdministratorLoginDTO;
 import com.bamdow.pojo.entity.Administrator;
 import com.bamdow.service.AdministratorService;
+import com.bamdow.utils.SmartJavaAiUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
@@ -19,6 +20,8 @@ public class AdministratorServiceImpl implements AdministratorService {
     @Autowired
     private AdministratorMapper administratorMapper;
 
+    @Autowired
+    private SmartJavaAiUtil smartJavaAiUtil;
 
     @Override
     public Administrator login(AdministratorLoginDTO administratorLoginDTO) {
@@ -42,4 +45,5 @@ public class AdministratorServiceImpl implements AdministratorService {
         }
         return administrator;
     }
+
 }

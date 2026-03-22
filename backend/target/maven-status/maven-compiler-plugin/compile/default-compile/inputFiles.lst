@@ -2,6 +2,7 @@ C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\BackendA
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\config\AliyunOssConfiguration.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\config\MinioConfig.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\config\SaTokenConfigure.java
+C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\config\SMJAiConfig.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\config\TomcatConfig.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\constant\MessageConstant.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\controller\admin\LoginController.java
@@ -24,6 +25,7 @@ C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\mapper\O
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\mapper\PhotographyProjectMapper.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\mapper\ProjectImageMapper.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\mapper\ProjectMapper.java
+C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\pojo\dto\AdministratorFaceLoginDTO.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\pojo\dto\AdministratorLoginDTO.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\pojo\dto\MarkdownFileCreateDTO.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\pojo\dto\MarkdownImageCreateDTO.java
@@ -45,7 +47,9 @@ C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\pojo\vo\
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\pojo\vo\ProjectListVO.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\pojo\vo\ProjectQueryVO.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\service\AdministratorService.java
+C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\service\FaceFeatureService.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\service\impl\AdministratorServiceImpl.java
+C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\service\impl\FaceFeatureServiceImpl.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\service\impl\MarkdownServiceImpl.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\service\impl\ProjectServiceImpl.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\service\MarkdownService.java
@@ -55,3 +59,4 @@ C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\utils\Ba
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\utils\CustomMultipartFile.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\utils\MarkdownProcessor.java
 C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\utils\MinioUtil.java
+C:\Users\Bamdow\Desktop\Bamdow_Website\backend\src\main\java\com\bamdow\utils\SmartJavaAiUtil.java

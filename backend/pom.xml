@@ -28,7 +28,32 @@
     </scm>
     <properties>
         <java.version>21</java.version>
+        <smartjavaai.version>1.1.1</smartjavaai.version>
+        <javacv.version>1.5.10</javacv.version>
+        <javacv.platform.windows-x86_64>windows-x86_64</javacv.platform.windows-x86_64>
+        <djl.platform.windows-x86_64>win-x86_64</djl.platform.windows-x86_64>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>onnxruntime</id>
+            <name>ONNX Runtime Repository</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+    </repositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>cn.smartjavaai</groupId>
+                <artifactId>bom</artifactId>
+                <version>${smartjavaai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -38,6 +63,93 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
+
+        <!--人脸识别模块-->
+        <dependency>
+            <groupId>cn.smartjavaai</groupId>
+            <artifactId>face</artifactId>
+        </dependency>
+
+        <!--PyTorch离线平台依赖-->
+        <dependency>
+            <groupId>ai.djl.pytorch</groupId>
+            <artifactId>pytorch-native-cpu</artifactId>
+            <classifier>${djl.platform.windows-x86_64}</classifier>
+            <version>2.7.1</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>ai.djl.pytorch</groupId>
+            <artifactId>pytorch-jni</artifactId>
+            <version>2.7.1-0.34.0</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!--tensorflow离线平台依赖-->
+        <dependency>
+            <groupId>ai.djl.tensorflow</groupId>
+            <artifactId>tensorflow-native-cpu</artifactId>
+            <classifier>${djl.platform.windows-x86_64}</classifier>
+            <scope>runtime</scope>
+            <version>2.16.1</version>
+        </dependency>
+
+        <!--mxnet离线平台依赖-->
+        <dependency>
+            <groupId>ai.djl.mxnet</groupId>
+            <artifactId>mxnet-native-mkl</artifactId>
+            <classifier>${djl.platform.windows-x86_64}</classifier>
+            <scope>runtime</scope>
+            <version>1.9.1</version>
+        </dependency>
+
+        <!-- 降级到 1.20.0，避免 1.21.x 与 Oracle JDK 21 的兼容性问题 -->
+        <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.20.0</version>
+        </dependency>
+
+
+
+
+        <!-- windows平台 (保留对应平台的配置，可以减小包大小)-->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacpp</artifactId>
+            <version>${javacv.version}</version>
+            <classifier>${javacv.platform.windows-x86_64}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg</artifactId>
+            <version>6.1.1-1.5.10</version>
+            <classifier>${javacv.platform.windows-x86_64}</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>openblas</artifactId>
+            <version>0.3.26-1.5.10</version>
+            <classifier>${javacv.platform.windows-x86_64}</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>opencv</artifactId>
+            <version>4.9.0-1.5.10</version>
+            <classifier>${javacv.platform.windows-x86_64}</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>ai.djl.pytorch</groupId>
+            <artifactId>pytorch-native-cpu</artifactId>
+            <classifier>${djl.platform.windows-x86_64}</classifier>
+            <version>2.7.1</version>
+            <scope>runtime</scope>
+        </dependency>
+
+<!--        sa-token依赖-->
         <dependency>
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-spring-boot4-starter</artifactId>
@@ -69,16 +181,11 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optional>  <!-- 保留你的这个配置也可以，不影响 -->
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -98,6 +205,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>1.2.83</version>
         </dependency>
 
 <!--OSS服务依赖-->

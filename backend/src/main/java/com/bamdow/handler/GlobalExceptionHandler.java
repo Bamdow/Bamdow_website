@@ -2,6 +2,7 @@ package com.bamdow.handler;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;
+import com.bamdow.except.BaseException;
 import com.bamdow.pojo.result.Result;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -38,5 +39,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotPermissionException.class)
     public Result handleNotPermissionException(NotPermissionException e) {
         return Result.error("无权限访问");
+    }
+
+    @ExceptionHandler(BaseException.class)
+    public Result handleBaseException(BaseException e) {
+        return Result.error(e.getMessage());
     }
 }

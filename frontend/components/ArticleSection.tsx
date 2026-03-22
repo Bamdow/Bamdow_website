@@ -120,6 +120,12 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language, userLo
     }
   };
 
+  // Handle remove image
+  const handleRemoveImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
 
 
   // Fetch articles from backend
@@ -515,9 +521,6 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language, userLo
                  {/* Header */}
                  <div className="mb-8">
                    <div className="flex items-center gap-3 mb-4">
-                     <span className="px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black text-sm font-bold uppercase rounded-md">
-                       {ARTICLE_LABELS[language][selectedArticle.category].split('|')[0].trim()}
-                     </span>
                      <span className="text-gray-500 font-mono text-sm uppercase font-bold tracking-widest">{selectedArticle.date}</span>
                    </div>
                    <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-6 leading-tight">
@@ -756,6 +759,13 @@ export const ArticleSection: React.FC<ArticleSectionProps> = ({ language, userLo
                            alt={`Preview ${index + 1}`} 
                            className="w-full h-full object-cover"
                          />
+                         <button
+                           onClick={() => handleRemoveImage(index)}
+                           className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                           title={language === 'zh' ? '删除图片' : 'Remove image'}
+                         >
+                           <X size={16} />
+                         </button>
                        </div>
                      ))}
                    </div>

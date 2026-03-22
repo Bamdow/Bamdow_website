@@ -24,16 +24,14 @@ export const ARTICLE_LABELS: Record<Language, Record<string, string>> = {
     [ArticleCategory.DIT]: 'DiT | 数媒与课程',
     [ArticleCategory.LUNA]: 'LUNA | 影像相关',
     [ArticleCategory.TALK]: '瞎叨be叨 | 杂记',
-    [ArticleCategory.AFTER8]: 'After8 | 聊艺术',
-    [ArticleCategory.SERENITY]: '山海疗养院 | 游记'
+    [ArticleCategory.AFTER8]: 'After8 | 聊艺术'
   },
   en: {
     'All': 'All',
     [ArticleCategory.DIT]: 'DiT | DMT & Courses',
     [ArticleCategory.LUNA]: 'LUNA | Visual Arts',
     [ArticleCategory.TALK]: 'Random Thoughts',
-    [ArticleCategory.AFTER8]: 'After8 | Art Talk',
-    [ArticleCategory.SERENITY]: 'Serenity Vista | Travel'
+    [ArticleCategory.AFTER8]: 'After8 | Art Talk'
   }
 };
 

@@ -10,7 +10,10 @@ export enum Category {
 }
 
 export enum ArticleCategory {
-
+  DIT = 'DIT',
+  LUNA = 'LUNA',
+  TALK = 'TALK',
+  AFTER8 = 'AFTER8'
 }
 
 export interface Article {
