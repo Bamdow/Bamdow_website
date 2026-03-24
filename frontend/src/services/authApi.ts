@@ -41,11 +41,17 @@ export async function login(username: string, password: string, rememberMe: bool
         localStorage.removeItem('satoken');
       }
       return true;
+    } else {
+      // 登录失败，显示后端返回的错误信息
+      throw new Error(data.message);
     }
-    return false;
   } catch (error) {
     console.error('Login error:', error);
-    return false;
+    // 显示错误信息给用户
+    if (error instanceof Error) {
+      throw error; // 向上传递错误信息，让调用者处理
+    }
+    throw new Error('登录失败，请重试');
   }
 }
 

@@ -48,7 +48,7 @@ public class SMJAiConfig {
         //人脸检测模型，SmartJavaAI提供了多种模型选择(更多模型，请查看文档)，切换模型需要同时修改modelEnum及modelPath
         config.setModelEnum(FaceDetModelEnum.MTCNN);
         //下载模型并替换本地路径，下载地址：https://pan.baidu.com/s/10l22x5fRz_gwLr8EAHa1Jg?pwd=1234 提取码: 1234
-        config.setModelPath("D:\\develop\\model\\face_model\\mtcnn");
+        config.setModelPath("src/main/resources/model/face_model/mtcnn");
         //只返回相似度大于该值的人脸,需要根据实际情况调整，分值越大越严格容易漏检，分值越小越宽松容易误识别
         config.setConfidenceThreshold(0.5f);
         //用于去除重复的人脸框，当两个框的重叠度超过该值时，只保留一个
@@ -67,7 +67,7 @@ public class SMJAiConfig {
         //高精度模型，速度慢
         config.setModelEnum(FaceRecModelEnum.INSIGHT_FACE_IRSE50_MODEL);
         //模型路径，请下载模型并替换为本地路径：https://pan.baidu.com/s/10l22x5fRz_gwLr8EAHa1Jg?pwd=1234 提取码: 1234
-        config.setModelPath("D:\\develop\\model\\face_model\\model_ir_se50.pt");
+        config.setModelPath("src/main/resources/model/face_model/model_ir_se50.pt");
         //裁剪人脸：如果图片已经是裁剪过的，则请将此参数设置为false
         config.setCropFace(true);
         //开启人脸对齐：适用于人脸不正的场景，开启将提升人脸特征准确度，关闭可以提升性能
@@ -88,7 +88,7 @@ public class SMJAiConfig {
         config.setModelEnum(LivenessModelEnum.IIC_FL_MODEL);
         config.setDevice(device);
         //需替换为实际模型存储路径
-        config.setModelPath("D:\\develop\\model\\face_model\\Ali_TongyiLab\\IIC_Fl.onnx");
+        config.setModelPath("src/main/resources/model/face_model/Ali_TongyiLab/IIC_Fl.onnx");
         //人脸活体阈值,可选,默认0.8，超过阈值则认为是真人，低于阈值是非活体
         config.setRealityThreshold(LivenessConstant.DEFAULT_REALITY_THRESHOLD);
         /*视频检测帧数，可选，默认10，输出帧数超过这个number之后，就可以输出识别结果。

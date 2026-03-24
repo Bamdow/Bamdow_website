@@ -1,0 +1,6 @@
+/backend/target/classes/model/face_model/Ali_TongyiLab/configuration.json
+/backend/target/classes/model/face_model/Ali_TongyiLab/IIC_Fl.onnx
+/backend/target/classes/model/face_model/model_ir_se50.pt
+/backend/target/classes/model/face_model/mtcnn/onet_script.pt
+/backend/target/classes/model/face_model/mtcnn/pnet_script.pt
+/backend/target/classes/model/face_model/mtcnn/rnet_script.pt

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Language } from '../types';
-import { LogIn, Eye, EyeOff, User, Lock } from 'lucide-react';
-import { login } from '../src/services/authApi';
+import { LogIn, Eye, EyeOff, User, Lock, Camera, RefreshCw, X } from 'lucide-react';
+import axios from 'axios';
+import { getToken, isLoggedIn } from '../src/services/authApi';
 
 interface LoginPageProps {
   language: Language;
@@ -15,9 +16,101 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, theme, onClose }
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // 人脸登录相关状态
+  const [showCamera, setShowCamera] = useState(false);
+  const [hasTakenPhoto, setHasTakenPhoto] = useState(false);
+  const [faceImage, setFaceImage] = useState<Blob | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+  
+  // 引用
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
+  // 启动摄像头
+  const startCamera = async () => {
+    try {
+      // 先显示模态框，确保video元素已经渲染
+      setShowCamera(true);
+      setHasTakenPhoto(false);
+      setFaceImage(null);
+      setPhotoPreview('');
+      
+      // 等待DOM更新，确保video元素已经存在
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 获取摄像头权限
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      streamRef.current = stream;
+      
+      // 设置视频流
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setError(language === 'zh' ? '无法访问摄像头，请检查权限' : 'Could not access camera, please check permissions');
+      setShowCamera(false);
+    }
+  };
+
+  // 停止摄像头
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+    setHasTakenPhoto(false);
+    setFaceImage(null);
+    setPhotoPreview('');
+  };
+
+  // 拍照
+  const takePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      
+      // 设置canvas尺寸与视频一致
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // 绘制视频帧到canvas
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // 将canvas转换为blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            setFaceImage(blob);
+            setPhotoPreview(canvas.toDataURL('image/jpeg'));
+            setHasTakenPhoto(true);
+            
+            // 直接停止视频流，不调用stopCamera函数，避免重置状态
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(track => track.stop());
+              streamRef.current = null;
+            }
+            setShowCamera(false);
+          }
+        }, 'image/jpeg', 0.8);
+      }
+    }
+  };
+
+  // 处理登录提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 检查是否已拍照
+    if (!faceImage) {
+      setError(language === 'zh' ? '请先进行人脸识别' : 'Please complete face recognition first');
+      return;
+    }
+    
     setIsLoading(true);
     setError('');
 
@@ -25,21 +118,59 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, theme, onClose }
       // 获取记住我选项的值
       const rememberMe = (document.getElementById('remember') as HTMLInputElement)?.checked || false;
       
-      // 调用登录API
-      const success = await login(username, password, rememberMe);
+      // 构造FormData
+      const formData = new FormData();
+      
+      // 1. 处理DTO (JSON转Blob)
+      const dto = {
+        administratorname: username,
+        password: password,
+        rememberMe: rememberMe
+      };
+      const dtoBlob = new Blob([JSON.stringify(dto)], { type: 'application/json' });
+      formData.append('dto', dtoBlob);
+      
+      // 2. 处理图片
+      formData.append('faceImage', faceImage, 'face.jpg');
+      
+      // 3. 发送请求
+      const response = await axios.post('/api/login', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       setIsLoading(false);
       
-      if (success) {
-        // 登录成功后关闭登录页面
+      if (response.data.code === 200) {
+        // 登录成功，存储token
+        const token = response.data.data;
+        if (rememberMe) {
+          localStorage.setItem('satoken', token);
+          sessionStorage.removeItem('satoken');
+        } else {
+          sessionStorage.setItem('satoken', token);
+          localStorage.removeItem('satoken');
+        }
+        
+        // 关闭登录页面
         onClose();
       } else {
-        setError(language === 'zh' ? '登录失败，请检查用户名和密码' : 'Login failed, please check username and password');
+        // 登录失败
+        setError(response.data.message || (language === 'zh' ? '登录失败，请重试' : 'Login failed, please try again'));
       }
     } catch (error) {
       setIsLoading(false);
       console.error('Login error:', error);
-      setError(language === 'zh' ? '登录失败，请重试' : 'Login failed, please try again');
+      
+      // 处理错误响应
+      if (axios.isAxiosError(error) && error.response) {
+        setError(error.response.data.message || (language === 'zh' ? '登录失败，请重试' : 'Login failed, please try again'));
+      } else if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError(language === 'zh' ? '登录失败，请重试' : 'Login failed, please try again');
+      }
     }
   };
 
@@ -126,6 +257,42 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, theme, onClose }
               </label>
             </div>
 
+            {/* 人脸识别 */}
+            <div className="mt-6">
+              <label className="block text-sm font-bold mb-2 text-black dark:text-white">
+                {language === 'zh' ? '人脸识别' : 'Face Recognition'}
+              </label>
+              
+              {!hasTakenPhoto ? (
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white font-bold text-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300"
+                >
+                  <Camera size={20} />
+                  {language === 'zh' ? '开始人脸识别' : 'Start Face Recognition'}
+                </button>
+              ) : (
+                <div className="border border-gray-300 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-gray-800">
+                  <div className="flex flex-col items-center">
+                    <img 
+                      src={photoPreview} 
+                      alt="Face preview" 
+                      className="w-32 h-32 object-cover rounded-lg mb-4"
+                    />
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300"
+                    >
+                      <RefreshCw size={16} />
+                      {language === 'zh' ? '重拍' : 'Retake'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Login and Cancel Buttons */}
             <div className="flex gap-4">
               <button
@@ -152,6 +319,54 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, theme, onClose }
 
           </div>
         </form>
+
+        {/* 摄像头模态框 */}
+        {showCamera && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+            <div className="relative w-full max-w-2xl max-h-[80vh] bg-white dark:bg-gray-900 rounded-3xl overflow-hidden">
+              {/* 关闭按钮 */}
+              <button
+                onClick={stopCamera}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                <X size={24} className="text-white" />
+              </button>
+
+              {/* 视频预览 */}
+              <div className="relative w-full h-[60vh] flex items-center justify-center">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                
+                {/* 人脸引导框 */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-64 h-80 border-4 border-white/80 rounded-full flex items-center justify-center">
+                    <div className="text-white text-sm font-bold">
+                      {language === 'zh' ? '请将人脸对准此框' : 'Please align your face to this frame'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 拍照按钮 */}
+              <div className="p-6 flex justify-center">
+                <button
+                  onClick={takePhoto}
+                  className="flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-white dark:bg-black text-black dark:text-white font-bold text-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-300"
+                >
+                  <Camera size={24} />
+                  {language === 'zh' ? '拍照' : 'Take Photo'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Canvas (hidden) */}
+        <canvas ref={canvasRef} className="hidden" />
       </div>
     </div>
   );
