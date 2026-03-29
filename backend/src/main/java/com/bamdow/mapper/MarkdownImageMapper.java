@@ -18,5 +18,5 @@ public interface MarkdownImageMapper {
      * @param markdownId
      */
     @Delete("delete from bamdow_web.markdown_images where markdown_id =#{markdownId}")
-    void deleteById(String markdownId);
+    void deleteByMdId(String markdownId);
 }

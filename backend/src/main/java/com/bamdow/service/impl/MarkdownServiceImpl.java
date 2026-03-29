@@ -17,6 +17,9 @@ import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,6 +29,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@CacheConfig(cacheNames = "markdownFileCache")
 public class MarkdownServiceImpl implements MarkdownService {
 
     @Autowired
@@ -89,9 +93,10 @@ public class MarkdownServiceImpl implements MarkdownService {
     }
 
     @Override
+    @CacheEvict(allEntries = true)
     public void deleteBatch(List<String> ids) {
         for(String id:ids){
-            markdownImageMapper.deleteById(id);
+            markdownImageMapper.deleteByMdId(id);
             markdownMapper.deleteById(id);
         }
         log.info("删除md文件成功，id为{}",ids);

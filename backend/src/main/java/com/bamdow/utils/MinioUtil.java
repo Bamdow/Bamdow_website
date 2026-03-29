@@ -54,13 +54,10 @@ public class MinioUtil {
      */
     public String getFileUrl(String objectName) throws Exception {
         //objectName = "随机字符串.txt"
-        return minioClient.getPresignedObjectUrl(
-                GetPresignedObjectUrlArgs.builder()
-                        .method(Method.GET)
-                        .bucket(minioConfig.getBucket())
-                        .object(objectName)
-                        .build());
-        //返回结果：http://localhost:9000/bucket/随机字符串.txt?......
+        return String.format("%s/%s/%s",
+                minioConfig.getEndpoint(),   // 比如 http://127.0.0.1:9000
+                minioConfig.getBucket(),     // 比如 webminio
+                objectName);                // 比如 markdown/20260322/xxx.md
     }
 
     /**

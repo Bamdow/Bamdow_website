@@ -16,6 +16,10 @@ import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@CacheConfig(cacheNames = "projectCache", cacheManager = "caffeineCacheManager")
 public class ProjectServiceImpl implements ProjectService {
 
     @Autowired
@@ -47,6 +52,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Transactional
     @Override
+    @CacheEvict(allEntries = true)
     public void save(ProjectCreateDTO projectCreateDTO) {
         // 生成UUID
         String id = UUID.randomUUID().toString();
@@ -105,28 +111,28 @@ public class ProjectServiceImpl implements ProjectService {
     public PageResult pageQuery(PageQuery pageQuery) {
         // 1. 启动分页
         PageHelper.startPage(pageQuery.getPage(), pageQuery.getSize());
-        // 2. 查询原始数据（tags是字符串）
-        Page<ProjectQueryVO> queryPage = projectMapper.pageQuery(pageQuery);
+        // 2. 查询项目列表（不带图片）
+        Page<Project> projectPage = projectMapper.selectPage(pageQuery);
 
         // 3. 逐个转换为前端需要的 ProjectListVO，并处理字段
-        List<ProjectListVO> projectListVOs = queryPage.stream().map(queryVO -> {
+        List<ProjectListVO> projectListVOs = projectPage.stream().map(project -> {
             ProjectListVO vo = new ProjectListVO();
             // 复制基础字段（id/title/description/category）
-            BeanUtils.copyProperties(queryVO, vo);
+            BeanUtils.copyProperties(project, vo);
 
             // 处理双语标题
             ProjectListVO.BilingualTitle bilingualTitle = new ProjectListVO.BilingualTitle();
-            bilingualTitle.setZh(queryVO.getTitle());
-            bilingualTitle.setEn(queryVO.getTitle()); // 可后续替换为真实英文标题
+            bilingualTitle.setZh(project.getTitle());
+            bilingualTitle.setEn(project.getTitle()); // 可后续替换为真实英文标题
             vo.setBilingualTitle(bilingualTitle);
 
             // 处理tags：字符串转List<String>
-            if (queryVO.getTags() != null && !queryVO.getTags().isEmpty()) {
-                vo.setTags(Arrays.asList(queryVO.getTags().split(",")));
+            if (project.getTags() != null && !project.getTags().isEmpty()) {
+                vo.setTags(Arrays.asList(project.getTags().split(",")));
             }
 
             // 查询项目图片列表
-            List<ProjectImage> projectImages = projectImageMapper.getByProjectId(queryVO.getId());
+            List<ProjectImage> projectImages = projectImageMapper.getByProjectId(project.getId());
             if (projectImages != null && !projectImages.isEmpty()) {
                 List<String> imageUrls = projectImages.stream()
                         .map(ProjectImage::getImageUrl)
@@ -138,10 +144,11 @@ public class ProjectServiceImpl implements ProjectService {
         }).collect(Collectors.toList());
 
         // 4. 封装返回结果（直接用查询页的总条数 + 转换后的结果列表）
-        return new PageResult(queryPage.getTotal(), projectListVOs);
+        return new PageResult(projectPage.getTotal(), projectListVOs);
     }
 
     @Override
+    @Cacheable(key = "#id")
     public ProjectDetailVO getById(String id) {
         //根据id查询作品主表数据
         Project project=projectMapper.getById(id);
@@ -187,6 +194,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @CacheEvict(allEntries = true)
     public void update(ProjectUpdateDTO projectUpdateDTO) {
         //获取项目id
         String id = projectUpdateDTO.getId();
@@ -234,6 +242,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @CacheEvict(allEntries = true)
     public void deleteBatch(List<String> ids) {
         for(String id:ids){
             //拿到分类便于从副表同步删除信息

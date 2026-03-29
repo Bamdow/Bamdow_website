@@ -30,21 +30,64 @@
     </update>
 
 
-    <select id="pageQuery" resultType="com.bamdow.pojo.vo.ProjectQueryVO">
+    <resultMap id="ProjectWithImagesMap" type="com.bamdow.pojo.vo.ProjectQueryVO">
+        <!-- 主表字段映射 -->
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="category" column="category"/>
+        <result property="tags" column="tags"/>
+
+        <!-- 图片集合映射：把查出来的多个 img_url 自动放进 List<String> -->
+        <collection property="imageUrls" ofType="string">
+            <constructor>
+                <arg column="img_url"/>
+            </constructor>
+        </collection>
+    </resultMap>
+
+
+
+    <select id="pageQuery" resultMap="ProjectWithImagesMap">
         SELECT
-            id,
-            title,
-            description,
-            category,
-            tags
+        p.id,
+        p.title,
+        p.description,
+        p.category,
+        p.tags,
+        img.image_url as img_url   <!-- 查出图片的 URL 列 -->
         FROM
-            projects
-        <where>
-            <if test="category != null and category != 'All'">
-                AND category = #{category}
-            </if>
-        </where>
+        projects p
+        LEFT JOIN project_images img ON p.id = img.project_id
+        WHERE
+        1=1
+        <if test="category != null and category != 'All'">
+            AND p.category = #{category}
+        </if>
         ORDER BY
-            created_at
+        p.created_at DESC,
+        p.id DESC,
+        img.sort_order
+    </select>
+
+    <select id="selectPage" resultType="com.bamdow.pojo.entity.Project">
+        SELECT
+        id,
+        title,
+        description,
+        category,
+        tags,
+        created_at as createdAt,
+        updated_at as updatedAt
+        FROM
+        projects
+        WHERE
+        1=1
+        <if test="category != null and category != 'All'">
+            AND category = #{category}
+        </if>
+        ORDER BY
+        created_at DESC,
+        id DESC
     </select>
 </mapper>

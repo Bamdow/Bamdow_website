@@ -21,6 +21,13 @@ public interface ProjectMapper {
     Page<ProjectQueryVO> pageQuery(PageQuery pageQuery);
 
     /**
+     * 项目分页查询（不带图片）
+     * @param pageQuery
+     * @return
+     */
+    Page<Project> selectPage(PageQuery pageQuery);
+
+    /**
      * 插入项目主表
      * @param project 项目实体
      */

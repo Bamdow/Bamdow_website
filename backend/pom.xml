@@ -103,6 +103,19 @@
             <version>1.9.1</version>
         </dependency>
 
+        <!-- Spring 缓存抽象（必须） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
+        <!-- Caffeine 本地缓存实现（必须） -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
+
         <!-- 降级到 1.20.0，避免 1.21.x 与 Oracle JDK 21 的兼容性问题 -->
         <dependency>
             <groupId>com.microsoft.onnxruntime</groupId>
